@@ -1,0 +1,1753 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>DOLONG - TOOL VIP</title>
+<!-- Thêm thư viện FingerprintJS để tạo ID thiết bị -->
+<script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
+<style>
+:root{
+  --bg:#02040a;--panel:#0a0e16;--panel-2:#0d121b;--line:#1a2230;--line-hot:#00ff9c;
+  --txt:#c8d6e5;--txt-dim:#5a6b7d;--txt-hot:#e6fff3;
+  --cyan:#00ffe5;--green:#00ff9c;--amber:#ffb800;--red:#ff2d55;--pink:#ff2d95;--purple:#a855f7;
+  --font:"JetBrains Mono","SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  --mono:"JetBrains Mono","SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  --display:"Space Grotesk","Inter",-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100vh}
+body{
+  font-family:var(--font);color:var(--txt);background:#02040a;
+  padding:0;padding-bottom:40px;overflow-x:hidden;
+  letter-spacing:.02em;font-size:13px;line-height:1.5;
+}
+#matrixRain{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.35}
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:1;
+  background:repeating-linear-gradient(0deg,rgba(0,255,156,.04) 0px,rgba(0,255,156,.04) 1px,transparent 1px,transparent 3px);
+  mix-blend-mode:screen;
+}
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:1;
+  background:radial-gradient(ellipse at 50% 50%,transparent 40%,rgba(0,0,0,.75) 100%),
+             linear-gradient(180deg,rgba(0,255,156,.03) 0%,transparent 15%,transparent 85%,rgba(0,255,229,.03) 100%);
+}
+
+/* --- HỆ THỐNG KEY & ĐẾM NGƯỢC --- */
+#gateScreen{
+  position:fixed;inset:0;z-index:600;display:flex;align-items:center;justify-content:center;
+  background:#02040a;flex-direction:column;transition:opacity 0.3s ease;
+}
+#gateScreen.hide{display:none!important;opacity:0;}
+.gate-box{
+  background:linear-gradient(180deg, rgba(10,14,22,0.95), rgba(5,8,16,0.98));
+  border:1px solid var(--green);padding:40px 30px;max-width:420px;width:90%;
+  text-align:center;box-shadow:0 0 50px rgba(0,255,156,.15), inset 0 0 20px rgba(0,255,156,.05);
+  position:relative; border-radius:8px;
+  clip-path:polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+}
+.gate-box::before,.gate-box::after{content:'';position:absolute;width:24px;height:24px;border:2px solid var(--cyan);pointer-events:none; transition: all 0.3s ease;}
+.gate-box::before{top:-2px;left:-2px;border-right:0;border-bottom:0}
+.gate-box::after{bottom:-2px;right:-2px;border-left:0;border-top:0}
+.gate-box:hover::before{width:100%;height:100%;opacity:0.1;}
+.gate-box:hover::after{width:100%;height:100%;opacity:0.1;}
+
+.gate-title{font-size:22px;font-weight:900;color:var(--green);letter-spacing:3px;margin-bottom:8px;text-shadow:0 0 10px var(--green); display:flex; align-items:center; justify-content:center; gap:10px;}
+.gate-subtitle{font-size:11px;color:var(--txt-dim);margin-bottom:25px;letter-spacing:1px;text-transform:uppercase;}
+
+.input-wrapper { position: relative; margin-bottom: 20px; }
+.gate-input{
+  width:100%;padding:18px 15px;background:#050810;border:1px solid var(--line);
+  color:var(--cyan);font-family:var(--mono);font-size:16px;outline:none;text-align:center;
+  font-weight:bold;letter-spacing:3px;border-radius:6px;transition: all 0.3s ease;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+}
+.gate-input:focus{
+  border-color:var(--cyan);box-shadow:0 0 15px rgba(0,255,229,.3), inset 0 2px 5px rgba(0,0,0,0.5);
+  background:#06101a;
+}
+.gate-input::placeholder{color:#3a4a5a;letter-spacing:1px;font-weight:normal;}
+
+.gate-btn{
+  width:100%;padding:16px;background:var(--green);color:#02040a;border:0;font-size:14px;
+  font-weight:900;font-family:var(--mono);letter-spacing:2px;cursor:pointer;text-transform:uppercase;
+  transition:all .2s;border-radius:6px;
+  clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+  position:relative; overflow:hidden;
+}
+.gate-btn::after {
+  content:''; position:absolute; top:0; left:-100%; width:100%; height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent);
+  transition:left 0.5s;
+}
+.gate-btn:hover:not(:disabled)::after { left:100%; }
+.gate-btn:hover:not(:disabled){background:var(--cyan);box-shadow:0 0 25px rgba(0,255,229,.5);transform:translateY(-2px);}
+.gate-btn:active:not(:disabled){transform:scale(.98);}
+.gate-btn:disabled{background:#1a2230;color:var(--txt-dim);cursor:not-allowed;transform:none;}
+
+.gate-err{color:var(--red);font-size:12px;margin-top:15px;display:none;font-weight:bold;text-shadow:0 0 5px rgba(255,45,85,0.5);}
+
+#loadingScreen{
+  position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;
+  flex-direction:column;color:var(--txt-hot);background:#02040a;font-family:var(--mono);
+}
+#loadingScreen.on{display:flex}
+#loadingScreen::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,255,156,.03) 2px 3px),
+             radial-gradient(ellipse at 50% 50%,transparent 30%,rgba(0,0,0,.9) 100%);
+}
+.loading-circle-container{position:relative;width:200px;height:200px;margin-bottom:28px;z-index:1}
+.loading-svg{transform:rotate(-90deg);width:100%;height:100%}
+.loading-track{fill:none;stroke:rgba(0,255,156,.08);stroke-width:3}
+.loading-progress{fill:none;stroke:url(#gradient);stroke-width:3;stroke-linecap:square;
+  stroke-dasharray:440;stroke-dashoffset:440;transition:stroke-dashoffset .15s linear;
+  filter:drop-shadow(0 0 6px #00ff9c) drop-shadow(0 0 12px #00ffe5)}
+.loading-icon{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:44px;line-height:1;
+  color:var(--green);text-shadow:0 0 8px var(--green),0 0 20px var(--green);animation:iconPulse 1.4s ease-in-out infinite}
+@keyframes iconPulse{0%,100%{opacity:1;filter:brightness(1)}50%{opacity:.7;filter:brightness(1.6)}}
+.loading-title-text{font-size:22px;font-weight:900;letter-spacing:14px;margin-bottom:8px;color:var(--green);
+  text-shadow:0 0 8px var(--green),0 0 24px var(--green);position:relative;z-index:1}
+.loading-sub-text{font-size:10px;font-weight:700;letter-spacing:6px;color:var(--txt-dim);margin-bottom:26px;position:relative;z-index:1}
+.loading-percent-big{font-size:60px;font-weight:900;line-height:1;margin-bottom:14px;color:var(--cyan);
+  text-shadow:0 0 10px var(--cyan),0 0 30px var(--cyan);position:relative;z-index:1;font-variant-numeric:tabular-nums}
+.loading-percent-big .unit{font-size:22px;color:var(--txt-dim);text-shadow:none;margin-left:4px}
+.loading-bar-wrapper{width:82%;max-width:380px;position:relative;z-index:1}
+.loading-bar-track{height:4px;background:rgba(0,255,156,.08);overflow:hidden;margin-bottom:10px;
+  border:1px solid rgba(0,255,156,.15);position:relative}
+.loading-bar-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--green),var(--cyan));
+  box-shadow:0 0 10px var(--green);transition:width .15s linear;position:relative}
+.loading-status-text{font-size:11px;font-weight:700;color:var(--green);margin-top:16px;text-align:center;letter-spacing:2px;position:relative;z-index:1}
+.loading-status-text .pct{color:var(--cyan);font-weight:900}
+
+#toolScreen{display:none;position:relative;z-index:10}
+#toolScreen.on{display:block;padding:12px;padding-top:0}
+@media(min-width:900px){#toolScreen.on{padding:16px;padding-top:0;max-width:1100px;margin:0 auto}}
+.hud-corner{position:fixed;width:22px;height:22px;pointer-events:none;z-index:5;opacity:.6}
+.hud-corner.tl{top:8px;left:8px;border-top:2px solid var(--green);border-left:2px solid var(--green)}
+.hud-corner.tr{top:8px;right:8px;border-top:2px solid var(--green);border-right:2px solid var(--green)}
+.hud-corner.bl{bottom:8px;left:8px;border-bottom:2px solid var(--green);border-left:2px solid var(--green)}
+.hud-corner.br{bottom:8px;right:8px;border-bottom:2px solid var(--green);border-right:2px solid var(--green)}
+.top-bar{
+  position:sticky;top:0;z-index:20;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;
+  padding:12px 0;background:linear-gradient(180deg,#02040a 60%,rgba(2,4,10,.85) 85%,transparent);
+  border-bottom:1px solid var(--line);margin-bottom:12px;
+}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand-icon{width:36px;height:36px;flex:none;background:#0a0e16;border:1px solid var(--line-hot);
+  display:flex;align-items:center;justify-content:center;font-size:16px;position:relative;color:var(--green);
+  box-shadow:0 0 12px rgba(0,255,156,.4),inset 0 0 12px rgba(0,255,156,.1)}
+.brand-icon::before{content:'';position:absolute;inset:3px;border:1px solid rgba(0,255,156,.25);animation:hudSpin 8s linear infinite}
+@keyframes hudSpin{to{transform:rotate(360deg)}}
+.brand-text h1{font-size:13px;font-weight:900;letter-spacing:3px;color:var(--green);
+  text-shadow:0 0 6px rgba(0,255,156,.6);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand-text p{font-size:10px;color:var(--txt-dim);display:flex;align-items:center;gap:6px;margin-top:2px;
+  letter-spacing:1.5px;text-transform:uppercase;font-weight:700}
+.status-dot{width:6px;height:6px;background:var(--green);box-shadow:0 0 8px var(--green),0 0 14px var(--green);animation:dotBlink 1.2s steps(2) infinite}
+@keyframes dotBlink{50%{opacity:.2}}
+.server-counter{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;font-weight:800;color:var(--green);
+  padding:6px 10px;border:1px solid rgba(0,255,156,.25);background:rgba(0,255,156,.04);
+  position:relative;overflow:hidden;letter-spacing:.5px;white-space:nowrap}
+.server-counter::before{content:'';position:absolute;top:0;bottom:0;left:-30%;width:30%;
+  background:linear-gradient(90deg,transparent,rgba(0,255,156,.2),transparent);animation:counterScan 2.4s linear infinite}
+@keyframes counterScan{to{left:130%}}
+.server-counter .num{color:var(--cyan);font-size:13px;font-weight:900}
+.server-counter .unit{color:var(--txt-dim);font-size:10px;margin-left:1px}
+.top-actions{display:flex;gap:6px}
+.btn-out{background:transparent;color:var(--red);border:1px solid rgba(255,45,85,.4);
+  padding:6px 11px;font-size:10.5px;font-weight:900;letter-spacing:1.5px;cursor:pointer;font-family:var(--mono);
+  text-transform:uppercase;transition:all .15s}
+.btn-out:hover{background:rgba(255,45,85,.15);color:#fff;box-shadow:0 0 12px rgba(255,45,85,.5),inset 0 0 8px rgba(255,45,85,.15)}
+.btn-out:active{transform:scale(.96)}
+#keyBadge{display:none;align-items:center;gap:10px;margin-bottom:12px;
+  background:rgba(0,255,229,.03);border:1px solid rgba(0,255,229,.2);
+  padding:8px 12px;font-size:10.5px;font-weight:800;font-family:var(--mono);color:var(--cyan);letter-spacing:1px}
+#keyBadge .kk{color:var(--txt-hot);font-weight:900}
+#keyBadge .rr{color:var(--amber);margin-left:auto;font-weight:900;text-shadow:0 0 5px var(--amber);}
+.main-card{background:rgba(10,14,22,.85);border:1px solid var(--line);padding:0;position:relative;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.main-card::before,.main-card::after{content:'';position:absolute;width:14px;height:14px;
+  border:2px solid var(--green);pointer-events:none;box-shadow:0 0 8px var(--green)}
+.main-card::before{top:-2px;left:-2px;border-right:0;border-bottom:0}
+.main-card::after{bottom:-2px;right:-2px;border-left:0;border-top:0}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border-bottom:1px solid var(--line);background:#050810;position:relative}
+.tab-btn{padding:12px 4px;font-family:var(--mono);font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;
+  cursor:pointer;transition:all .15s;background:transparent;color:var(--txt-dim);border:0;
+  border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  position:relative;line-height:1.1;text-align:center}
+.tab-btn:last-child{border-right:0}
+.tab-btn .tb-icon{font-size:14px;line-height:1;filter:grayscale(.6) brightness(.7);transition:filter .15s}
+.tab-btn .tb-text{font-size:9px;letter-spacing:1px}
+.tab-btn::before{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:var(--green);
+  transform:scaleX(0);transition:transform .2s;box-shadow:0 0 10px var(--green)}
+.tab-btn:hover{background:rgba(0,255,156,.03);color:var(--txt)}
+.tab-btn:hover .tb-icon{filter:grayscale(0) brightness(1.2)}
+.tab-btn.active{color:var(--green);background:rgba(0,255,156,.04)}
+.tab-btn.active .tb-icon{filter:grayscale(0) brightness(1.3)}
+.tab-btn.active::before{transform:scaleX(1)}
+.tab-btn.shader-tab.active{color:var(--cyan);background:rgba(0,255,229,.04)}
+.tab-btn.shader-tab.active::before{background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+.tab-btn.vip-tab.active{color:var(--amber);background:rgba(255,184,0,.04)}
+.tab-btn.vip-tab.active::before{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+.tab-btn.aimvip-tab.active{color:var(--cyan);background:rgba(0,255,229,.04)}
+.tab-btn.aimvip-tab.active::before{background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+.tab-btn.cachevip-tab.active{color:var(--pink);background:rgba(255,45,149,.04)}
+.tab-btn.cachevip-tab.active::before{background:var(--pink);box-shadow:0 0 10px var(--pink)}
+@media(max-width:480px){.tab-btn .tb-text{font-size:8px;letter-spacing:.5px}}
+.tab-content{display:none;padding:16px}
+.tab-content.active{display:block;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.step-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;margin-top:8px;
+  padding-bottom:8px;border-bottom:1px dashed var(--line)}
+.step-header:first-child{margin-top:0}
+.step-num{width:22px;height:22px;flex:none;border:1px solid var(--green);color:var(--green);
+  display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;font-family:var(--mono);
+  background:rgba(0,255,156,.05);box-shadow:0 0 6px rgba(0,255,156,.3)}
+.step-title{font-size:12px;font-weight:800;color:var(--txt-hot);letter-spacing:1.5px;text-transform:uppercase}
+.step-title::after{content:'_';color:var(--green);animation:cursorBlink 1s steps(2) infinite;margin-left:2px}
+@keyframes cursorBlink{50%{opacity:0}}
+.file-upload-wrapper{width:100%;margin-bottom:12px;position:relative}
+.file-upload-wrapper input[type=file]{display:none}
+.file-upload-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:18px 14px;
+  background:linear-gradient(90deg,var(--green) 50%,transparent 50%) top/8px 1px repeat-x,
+             linear-gradient(90deg,var(--green) 50%,transparent 50%) bottom/8px 1px repeat-x,
+             linear-gradient(0deg,var(--green) 50%,transparent 50%) left/1px 8px repeat-y,
+             linear-gradient(0deg,var(--green) 50%,transparent 50%) right/1px 8px repeat-y,#050810;
+  color:var(--green);cursor:pointer;font-size:12px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;
+  transition:all .15s;font-family:var(--mono);position:relative;word-break:break-all;text-align:center}
+.file-upload-btn:hover{color:var(--cyan);
+  background:linear-gradient(90deg,var(--cyan) 50%,transparent 50%) top/8px 1px repeat-x,
+             linear-gradient(90deg,var(--cyan) 50%,transparent 50%) bottom/8px 1px repeat-x,
+             linear-gradient(0deg,var(--cyan) 50%,transparent 50%) left/1px 8px repeat-y,
+             linear-gradient(0deg,var(--cyan) 50%,transparent 50%) right/1px 8px repeat-y,rgba(0,255,229,.04);
+  text-shadow:0 0 8px var(--cyan)}
+.file-upload-btn:active{transform:scale(.99)}
+.file-upload-btn b{font-weight:900}
+.file-info-box{background:rgba(0,255,156,.03);border-left:3px solid var(--green);padding:10px 12px;
+  margin-bottom:16px;display:none;font-family:var(--mono);position:relative}
+.file-info-box.show{display:block;animation:fadeIn .2s ease}
+.file-info-box::before{content:'// FILE LOADED';position:absolute;top:-1px;right:8px;font-size:9px;color:var(--green);
+  letter-spacing:1px;font-weight:800;background:#0a0e16;padding:0 4px}
+.fi-row{display:flex;justify-content:space-between;gap:8px;margin-bottom:4px;font-size:11px}
+.fi-row:last-child{margin-bottom:0}
+.fi-label{color:var(--txt-dim);font-weight:800;letter-spacing:.5px}
+.fi-val{color:var(--cyan);font-weight:900;text-align:right;word-break:break-all}
+.fi-name{font-weight:900;color:var(--green);font-size:11px;padding:5px 8px;border:1px dashed rgba(0,255,156,.3);
+  display:block;margin-bottom:8px;text-align:center;word-break:break-all;letter-spacing:.5px}
+.packages{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pkg-card{border:1px solid var(--line);padding:12px;background:#050810;cursor:pointer;
+  transition:all .15s;position:relative;overflow:hidden;font-family:var(--mono)}
+.pkg-card::before{content:'';position:absolute;top:0;left:0;bottom:0;width:2px;background:var(--line);transition:background .15s}
+.pkg-card:hover{border-color:rgba(0,255,156,.35);background:rgba(0,255,156,.03)}
+.pkg-card:hover::before{background:var(--green)}
+.pkg-card.selected{border-color:var(--green);background:rgba(0,255,156,.06);
+  box-shadow:0 0 12px rgba(0,255,156,.15),inset 0 0 12px rgba(0,255,156,.05)}
+.pkg-card.selected::before{background:var(--green);box-shadow:0 0 8px var(--green)}
+.pkg-card.selected::after{content:'[✓]';position:absolute;top:8px;right:10px;color:var(--green);
+  font-size:11px;font-weight:900;text-shadow:0 0 8px var(--green);animation:popIn .2s ease}
+@keyframes popIn{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+.pkg-tags{display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap;min-height:16px}
+.tag{font-size:8.5px;font-weight:900;padding:2px 6px;text-transform:uppercase;letter-spacing:1px;
+  background:var(--amber);color:#000;font-family:var(--mono)}
+.pkg-title{font-size:11.5px;font-weight:800;color:var(--txt);display:flex;align-items:center;gap:6px;
+  line-height:1.3;letter-spacing:.3px}
+.pkg-card.selected .pkg-title{color:var(--txt-hot)}
+.pkg-ico{font-size:14px;line-height:1;flex-shrink:0;filter:grayscale(.3)}
+.pkg-card.selected .pkg-ico{filter:grayscale(0) brightness(1.2)}
+.btn-submit{width:100%;padding:16px;margin-top:14px;background:var(--green);color:#02040a;border:0;
+  font-size:12px;font-weight:900;letter-spacing:3px;text-transform:uppercase;cursor:pointer;font-family:var(--mono);
+  position:relative;overflow:hidden;transition:all .15s;
+  clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);
+  text-shadow:0 0 6px rgba(0,0,0,.4)}
+.btn-submit::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);transition:left .6s}
+.btn-submit:hover:not(:disabled)::before{left:100%}
+.btn-submit:hover:not(:disabled){background:var(--cyan);box-shadow:0 0 24px rgba(0,255,229,.5),inset 0 0 24px rgba(255,255,255,.1)}
+.btn-submit:active:not(:disabled){transform:scale(.99)}
+.btn-submit:disabled{background:#1a2230;color:var(--txt-dim);cursor:not-allowed;text-shadow:none}
+.msg{margin-top:14px;padding:10px 12px;font-size:11px;display:none;line-height:1.5;font-weight:800;
+  font-family:var(--mono);letter-spacing:.5px;border-left:3px solid}
+.msg.ok{background:rgba(0,255,156,.05);color:var(--green);display:block;border-color:var(--green)}
+.msg.ok::before{content:'[OK] ';font-weight:900}
+.msg.bad{background:rgba(255,45,85,.05);color:var(--red);display:block;border-color:var(--red)}
+.msg.bad::before{content:'[ERR] ';font-weight:900}
+.shader-hero{padding:16px;margin-bottom:14px;
+  background:linear-gradient(135deg,rgba(0,255,229,.05),rgba(168,85,247,.05)),#050810;
+  border:1px solid rgba(0,255,229,.3);position:relative;overflow:hidden}
+.shader-hero::before{content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(0,255,229,.08),transparent),
+             repeating-linear-gradient(45deg,transparent 0 6px,rgba(0,255,229,.02) 6px 7px);
+  pointer-events:none}
+.shader-hero-head{display:flex;align-items:center;gap:10px;margin-bottom:6px;position:relative;z-index:1}
+.shader-hero-ico{font-size:22px;line-height:1;filter:drop-shadow(0 0 6px rgba(0,255,229,.6))}
+.shader-hero-title{font-size:13px;font-weight:900;color:var(--cyan);letter-spacing:4px;text-transform:uppercase;
+  text-shadow:0 0 8px rgba(0,255,229,.6)}
+.shader-hero-desc{font-size:10.5px;color:var(--txt-dim);position:relative;z-index:1;line-height:1.6;letter-spacing:.5px}
+.shader-hero-desc b{color:var(--green);font-weight:900;text-shadow:0 0 4px rgba(0,255,156,.5)}
+.shader-detected{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;position:relative;z-index:1}
+.detected-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;
+  background:rgba(0,255,229,.06);border:1px solid rgba(0,255,229,.3);color:var(--cyan);
+  font-size:9.5px;font-weight:800;font-family:var(--mono);letter-spacing:.5px;text-transform:uppercase}
+.detected-chip .num{background:var(--green);color:#000;padding:1px 5px;font-weight:900;font-size:9px}
+.shader-color-grid-4{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+@media(max-width:420px){.shader-color-grid-4{grid-template-columns:1fr}}
+.shader-color-card{background:#050810;border:1px solid var(--line);padding:12px;position:relative;transition:all .15s}
+.shader-color-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--line);transition:background .15s}
+.shader-color-card.chams::before{background:var(--green);box-shadow:0 0 8px var(--green)}
+.shader-color-card.dinhvi::before{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+.shader-color-card.chams-nguoi::before{background:var(--red);box-shadow:0 0 8px var(--red)}
+.shader-color-card.dinhvi-nguoi::before{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+.shader-color-card:hover{border-color:rgba(0,255,156,.3);transform:translateY(-1px)}
+.scc-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px dashed var(--line)}
+.scc-ico{font-size:16px;line-height:1}
+.scc-title{font-size:10.5px;font-weight:900;color:var(--txt);flex:1;line-height:1.2;letter-spacing:1px;text-transform:uppercase}
+.scc-count{font-size:10px;font-weight:900;padding:2px 7px;font-family:var(--mono);color:#02040a;min-width:22px;text-align:center}
+.chams .scc-count{background:var(--green)}
+.dinhvi .scc-count{background:var(--cyan)}
+.chams-nguoi .scc-count{background:var(--red)}
+.dinhvi-nguoi .scc-count{background:var(--amber)}
+.scc-body{display:flex;flex-direction:column;gap:6px}
+.scc-row{display:flex;align-items:center;gap:6px}
+.scc-row input[type=color]{width:44px;height:34px;padding:2px;border:1px solid var(--line);background:#02040a;
+  cursor:pointer;flex:none;transition:border-color .15s}
+.scc-row input[type=color]:hover{border-color:var(--green)}
+.scc-row input[type=text]{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--line);background:#02040a;
+  font-family:var(--mono);font-weight:900;font-size:11px;text-transform:uppercase;color:var(--txt);
+  letter-spacing:1.5px;transition:all .15s}
+.scc-row input[type=text]:focus{outline:none;border-color:var(--green);
+  box-shadow:0 0 8px rgba(0,255,156,.3),inset 0 0 8px rgba(0,255,156,.05);color:var(--green)}
+.shader-alpha-bar{background:#050810;border:1px solid var(--line);padding:12px;margin-bottom:14px}
+.sab-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.sab-label{font-size:10.5px;font-weight:900;color:var(--txt);letter-spacing:1.2px;text-transform:uppercase}
+.sab-value{font-family:var(--mono);font-size:13px;font-weight:900;color:var(--cyan);
+  text-shadow:0 0 6px var(--cyan);font-variant-numeric:tabular-nums}
+.shader-type-selector{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:12px}
+@media(max-width:520px){.shader-type-selector{grid-template-columns:repeat(3,1fr)}}
+.st-btn{padding:10px 4px;border:1px solid var(--line);background:#050810;cursor:pointer;transition:all .15s;
+  font-family:var(--mono);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.st-btn:hover{border-color:rgba(0,255,156,.3);background:rgba(0,255,156,.03)}
+.st-btn .st-ico{font-size:15px;line-height:1;filter:grayscale(.5) brightness(.8);transition:filter .15s}
+.st-btn .st-name{font-size:9px;font-weight:900;color:var(--txt-dim);text-align:center;line-height:1.1;letter-spacing:.5px;text-transform:uppercase}
+.st-btn .st-badge{font-size:9px;font-weight:900;padding:1px 5px;background:var(--line);color:var(--txt-dim);
+  font-family:var(--mono);min-width:18px;text-align:center}
+.st-btn:hover .st-ico{filter:grayscale(0) brightness(1.2)}
+.st-btn.active[data-type="all"]{border-color:var(--green);background:rgba(0,255,156,.06)}
+.st-btn.active[data-type="all"] .st-ico{filter:grayscale(0) brightness(1.2)}
+.st-btn.active[data-type="all"] .st-name{color:var(--green)}
+.st-btn.active[data-type="all"] .st-badge{background:var(--green);color:#000}
+.st-btn.active[data-type="chams_sung"]{border-color:var(--green);background:rgba(0,255,156,.06)}
+.st-btn.active[data-type="chams_sung"] .st-name{color:var(--green)}
+.st-btn.active[data-type="chams_sung"] .st-badge{background:var(--green);color:#000}
+.st-btn.active[data-type="dinhvi_sung"]{border-color:var(--cyan);background:rgba(0,255,229,.06)}
+.st-btn.active[data-type="dinhvi_sung"] .st-name{color:var(--cyan)}
+.st-btn.active[data-type="dinhvi_sung"] .st-badge{background:var(--cyan);color:#000}
+.st-btn.active[data-type="chams_nguoi"]{border-color:var(--red);background:rgba(255,45,85,.06)}
+.st-btn.active[data-type="chams_nguoi"] .st-name{color:var(--red)}
+.st-btn.active[data-type="chams_nguoi"] .st-badge{background:var(--red);color:#fff}
+.st-btn.active[data-type="dinhvi_nguoi"]{border-color:var(--amber);background:rgba(255,184,0,.06)}
+.st-btn.active[data-type="dinhvi_nguoi"] .st-name{color:var(--amber)}
+.st-btn.active[data-type="dinhvi_nguoi"] .st-badge{background:var(--amber);color:#000}
+.filter-info{display:flex;align-items:center;gap:8px;padding:7px 10px;background:#050810;border:1px solid var(--line);
+  margin-bottom:8px;font-size:10.5px;font-weight:700;color:var(--txt-dim);font-family:var(--mono);letter-spacing:.3px}
+.filter-info .fi-dot{width:6px;height:6px;flex:none;box-shadow:0 0 6px currentColor}
+.filter-info .fi-dot.chams{background:var(--green);color:var(--green)}
+.filter-info .fi-dot.dinhvi{background:var(--cyan);color:var(--cyan)}
+.filter-info .fi-dot.all{background:var(--purple);color:var(--purple)}
+.filter-info b{color:var(--green);font-weight:900}
+.shader-table-wrap{background:#050810;border:1px solid var(--line);overflow:auto;max-height:45vh;margin-bottom:12px}
+.shader-table{width:100%;border-collapse:collapse;font-size:11px;font-family:var(--mono)}
+.shader-table th{background:#0a0e16;color:var(--green);font-weight:900;font-size:9px;padding:9px 8px;
+  text-align:left;border-bottom:1px solid var(--green);position:sticky;top:0;z-index:2;
+  text-transform:uppercase;white-space:nowrap;letter-spacing:1.5px}
+.shader-table td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:middle;word-break:break-all;color:var(--txt)}
+.shader-table tr:hover td{background:rgba(0,255,156,.03)}
+.shader-table tr:last-child td{border-bottom:none}
+.shader-table .path-cell{font-size:10px;color:var(--txt-dim);line-height:1.3;max-width:200px;letter-spacing:.2px}
+.shader-table .row-num{color:var(--txt-dim);font-size:9.5px;font-weight:800;width:30px;text-align:center}
+.shader-table input[type=checkbox]{width:16px;height:16px;accent-color:var(--green);cursor:pointer}
+.shader-table .group-pill{display:inline-block;padding:2px 7px;font-size:9px;font-weight:900;
+  font-family:var(--mono);white-space:nowrap;text-transform:uppercase;letter-spacing:.5px}
+.shader-table .group-pill.chams{background:rgba(0,255,156,.15);color:var(--green);border:1px solid rgba(0,255,156,.4)}
+.shader-table .group-pill.dinhvi{background:rgba(0,255,229,.15);color:var(--cyan);border:1px solid rgba(0,255,229,.4)}
+.shader-table .type-badge{font-size:8.5px;font-weight:900;padding:2px 6px;text-transform:uppercase;
+  letter-spacing:.8px;display:inline-block;font-family:var(--mono)}
+.type-weapon{background:rgba(255,45,85,.15);color:var(--red);border:1px solid rgba(255,45,85,.4)}
+.type-player{background:rgba(0,255,156,.15);color:var(--green);border:1px solid rgba(0,255,156,.4)}
+.shader-actions{display:grid;grid-template-columns:1fr 2fr;gap:8px}
+.shader-actions button{padding:13px;border:0;font-size:11px;font-weight:900;cursor:pointer;transition:all .15s;
+  font-family:var(--mono);display:flex;align-items:center;justify-content:center;gap:6px;letter-spacing:2px;text-transform:uppercase}
+.btn-rescan{background:#050810;color:var(--txt-dim);border:1px solid var(--line)}
+.btn-rescan:hover{color:var(--green);border-color:var(--green);background:rgba(0,255,156,.04)}
+.btn-make{background:var(--cyan);color:#02040a;box-shadow:0 0 16px rgba(0,255,229,.3);
+  clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px);
+  position:relative;overflow:hidden}
+.btn-make::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);transition:left .6s}
+.btn-make:hover:not(:disabled)::before{left:100%}
+.btn-make:hover:not(:disabled){background:#00fff0;box-shadow:0 0 28px rgba(0,255,229,.6)}
+.btn-make:disabled{background:#1a2230;color:var(--txt-dim);box-shadow:none;cursor:not-allowed}
+.shader-empty-hero{background:rgba(0,255,229,.03);border:1px dashed rgba(0,255,229,.3);padding:32px 20px;text-align:center;position:relative}
+.shader-empty-hero::before,.shader-empty-hero::after{content:'+';position:absolute;color:var(--cyan);font-size:14px;font-weight:900;opacity:.6}
+.shader-empty-hero::before{top:8px;left:12px}
+.shader-empty-hero::after{bottom:8px;right:12px}
+.shader-empty-hero .ico{font-size:44px;display:block;margin-bottom:10px;opacity:.5;filter:grayscale(.3)}
+.shader-empty-hero .txt{font-size:11px;font-weight:900;color:var(--cyan);line-height:1.5;letter-spacing:1px;text-transform:uppercase}
+.shader-empty-hero .sub{font-size:10px;color:var(--txt-dim);margin-top:6px;font-family:var(--mono)}
+input[type=range]{width:100%;margin:8px 0;height:4px;-webkit-appearance:none;appearance:none;
+  background:linear-gradient(90deg,var(--green),var(--cyan));outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:20px;
+  background:var(--cyan);box-shadow:0 0 10px var(--cyan),0 0 20px var(--cyan);cursor:pointer;border:0;
+  clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)}
+input[type=range]::-moz-range-thumb{width:14px;height:20px;background:var(--cyan);border:0;
+  box-shadow:0 0 10px var(--cyan);cursor:pointer}
+#loadingOverlay{position:fixed;inset:0;z-index:9999;background:rgba(2,4,10,.94);backdrop-filter:blur(8px);
+  display:none;align-items:center;justify-content:center;padding:20px}
+#loadingOverlay.on{display:flex;animation:fadeIn .2s ease}
+.processing-box{background:#0a0e16;border:1px solid var(--green);padding:32px 24px;text-align:center;
+  max-width:360px;width:100%;position:relative;overflow:hidden;
+  box-shadow:0 0 40px rgba(0,255,156,.15),inset 0 0 40px rgba(0,255,156,.03)}
+.processing-box::before,.processing-box::after{content:'';position:absolute;width:16px;height:16px;
+  border:2px solid var(--cyan);pointer-events:none}
+.processing-box::before{top:-2px;left:-2px;border-right:0;border-bottom:0}
+.processing-box::after{bottom:-2px;right:-2px;border-left:0;border-top:0}
+.processing-box .scan-line{position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--green),transparent);box-shadow:0 0 10px var(--green);
+  animation:scanLine 1.4s linear infinite}
+@keyframes scanLine{0%{transform:translateY(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(300px);opacity:0}}
+.processing-title{font-size:14px;font-weight:900;color:var(--green);letter-spacing:3px;margin-bottom:4px;
+  text-transform:uppercase;text-shadow:0 0 8px var(--green)}
+.processing-desc{font-size:10.5px;color:var(--txt-dim);margin-bottom:20px;font-family:var(--mono);letter-spacing:1.5px}
+.processing-bar-wrapper{width:100%;background:rgba(0,255,156,.06);height:4px;overflow:hidden;margin-bottom:12px;
+  border:1px solid rgba(0,255,156,.15)}
+.processing-bar-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--green),var(--cyan));
+  box-shadow:0 0 10px var(--green);transition:width .15s linear}
+.processing-percent{font-size:44px;font-weight:900;font-family:var(--mono);color:var(--cyan);
+  text-shadow:0 0 12px var(--cyan);line-height:1;font-variant-numeric:tabular-nums}
+.processing-percent .unit{font-size:16px;color:var(--txt-dim);text-shadow:none;margin-left:4px}
+.processing-status{margin-top:8px;font-size:10.5px;font-weight:800;font-family:var(--mono);color:var(--green);letter-spacing:2px}
+.processing-status .pct{color:var(--cyan);font-weight:900}
+input[type=file]{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- ================= GIAO DIỆN ĐĂNG NHẬP KEY ================= -->
+<div id="gateScreen">
+  <div class="gate-box">
+    <div class="gate-title">🗿 DOLONG VIP</div>
+    <div class="gate-subtitle">Hệ thống xác thực bản quyền</div>
+    
+    <div class="input-wrapper">
+      <input type="password" id="keyInput" class="gate-input" placeholder="Nhập Key Của Bạn..." autocomplete="off" onkeydown="if(event.key==='Enter') handleLogin()">
+    </div>
+    
+    <button class="gate-btn" id="btnSubmitKey" onclick="handleLogin()">XÁC NHẬN KÍCH HOẠT</button>
+    <div class="gate-err" id="gateErr">Key không hợp lệ hoặc đã hết hạn!</div>
+  </div>
+</div>
+
+<canvas id="matrixRain"></canvas>
+<div class="hud-corner tl"></div>
+<div class="hud-corner tr"></div>
+<div class="hud-corner bl"></div>
+<div class="hud-corner br"></div>
+
+<div id="loadingScreen">
+  <div class="loading-circle-container">
+    <svg class="loading-svg" viewBox="0 0 160 160">
+      <defs>
+        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#00ff9c"/>
+          <stop offset="100%" stop-color="#00ffe5"/>
+        </linearGradient>
+      </defs>
+      <circle class="loading-track" cx="80" cy="80" r="70"></circle>
+      <circle class="loading-progress" id="loadingProgressCircle" cx="80" cy="80" r="70"></circle>
+    </svg>
+    <div class="loading-icon">🔓</div>
+  </div>
+  <div class="loading-title-text" data-text="LOADING">LOADING</div>
+  <div class="loading-sub-text">INITIALIZING SYSTEM</div>
+  <div class="loading-percent-big"><span id="loadingPercentBig">0</span><span class="unit">%</span></div>
+  <div class="loading-bar-wrapper">
+    <div class="loading-bar-track">
+      <div class="loading-bar-fill" id="loadingBarFill"></div>
+    </div>
+  </div>
+  <div class="loading-status-text">
+    <span>Đang tải hệ thống</span>...
+    <span class="pct"><span id="loadingStatusPct">0</span>%</span>
+  </div>
+</div>
+
+<div id="toolScreen">
+  <div class="top-bar">
+    <div class="brand">
+      <div class="brand-icon">🗿</div>
+      <div class="brand-text">
+        <h1>DOLONG</h1>
+        <p><span class="status-dot"></span> <span>System Online</span></p>
+      </div>
+    </div>
+    <div class="server-counter">
+      <span class="lbl">PING: <span class="num" id="serverCounterNum">0</span><span class="unit">ms</span></span>
+    </div>
+    <div class="top-actions">
+      <button type="button" class="btn-out" id="btnOut" onclick="exitToolStub()">EXIT</button>
+    </div>
+  </div>
+
+  <div id="keyBadge">
+    <span>🔐</span>
+    <span class="kk" id="keyBadgeKey">—</span>
+    <span class="rr" id="keyBadgeRemain">—</span>
+  </div>
+
+  <div class="main-card">
+    <div class="tabs">
+      <button type="button" class="tab-btn active" id="btnTabThuong" onclick="switchTab('aim-thuong')">
+        <span class="tb-icon">🎯</span><span class="tb-text">THƯỜNG</span>
+      </button>
+      <button type="button" class="tab-btn vip-tab inactive" id="btnTabVip" onclick="switchTab('vip')">
+        <span class="tb-icon">👑</span><span class="tb-text">VIP</span>
+      </button>
+      <button type="button" class="tab-btn aimvip-tab inactive" id="btnTabAimVip" onclick="switchTab('aimvip')">
+        <span class="tb-icon">🎯</span><span class="tb-text">AIM VIP</span>
+      </button>
+      <button type="button" class="tab-btn cachevip-tab inactive" id="btnTabCacheVip" onclick="switchTab('cachevip')">
+        <span class="tb-icon">💎</span><span class="tb-text">CACHE</span>
+      </button>
+      <button type="button" class="tab-btn shader-tab inactive" id="btnTabShader" onclick="switchTab('shader')">
+        <span class="tb-icon">🎨</span><span class="tb-text">SHADER</span>
+      </button>
+    </div>
+
+    <div id="tab-aim-thuong" class="tab-content active">
+      <div class="step-header"><div class="step-num">1</div><div class="step-title">Chọn File Gốc</div></div>
+      <div class="file-upload-wrapper">
+        <input type="file" id="fileThuong" onchange="updateFileName('thuong')">
+        <div class="file-upload-btn" id="btnFileThuong" onclick="triggerFilePick('fileThuong')">📁 Chọn file Bundle</div>
+      </div>
+      <div id="fileInfoThuong" class="file-info-box">
+        <div class="fi-name" id="fiNameThuong">—</div>
+        <div class="fi-row"><span class="fi-label">SIZE:</span><span class="fi-val" id="fiSizeThuong">—</span></div>
+      </div>
+      <div class="step-header"><div class="step-num">2</div><div class="step-title">Chọn Chức Năng</div></div>
+      <div class="packages" id="funcListThuong">
+        <div class="pkg-card selected" data-val="chestv2" onclick="selectFunc('thuong',this)"><div class="pkg-tags"><span class="tag">HOT</span></div><div class="pkg-title"><span class="pkg-ico">🫀</span> 1 · Chest V2</div></div>
+        <div class="pkg-card" data-val="neck" onclick="selectFunc('thuong',this)"><div class="pkg-tags"></div><div class="pkg-title"><span class="pkg-ico">🦴</span> 2 · Neck</div></div>
+        <div class="pkg-card" data-val="necksafe" onclick="selectFunc('thuong',this)"><div class="pkg-tags"></div><div class="pkg-title"><span class="pkg-ico">🦴🛡</span> 3 · Neck Safe</div></div>
+        <div class="pkg-card" data-val="bodysafe" onclick="selectFunc('thuong',this)"><div class="pkg-tags"></div><div class="pkg-title"><span class="pkg-ico">🧍🛡</span> 4 · Body Safe</div></div>
+        <div class="pkg-card" data-val="zoro" onclick="selectFunc('thuong',this)"><div class="pkg-tags"></div><div class="pkg-title"><span class="pkg-ico">⚔️</span> 5 · Zoro</div></div>
+        <div class="pkg-card" data-val="neckdrag" onclick="selectFunc('thuong',this)"><div class="pkg-tags"></div><div class="pkg-title"><span class="pkg-ico">🎣🦴</span> 6 · Neck+Drag</div></div>
+        <div class="pkg-card" data-val="chest" onclick="selectFunc('thuong',this)"><div class="pkg-tags"></div><div class="pkg-title"><span class="pkg-ico">🫀</span> 7 · Chest</div></div>
+        <div class="pkg-card" data-val="drag" onclick="selectFunc('thuong',this)"><div class="pkg-tags"></div><div class="pkg-title"><span class="pkg-ico">🎣</span> 8 · Drag</div></div>
+        <div class="pkg-card" data-val="magic" onclick="selectFunc('thuong',this)"><div class="pkg-tags"></div><div class="pkg-title"><span class="pkg-ico">🪄</span> 9 · Magic Bullet</div></div>
+        <div class="pkg-card" data-val="bung" onclick="selectFunc('thuong',this)"><div class="pkg-tags"></div><div class="pkg-title"><span class="pkg-ico">🫃</span> 10 · Aim Bụng</div></div>
+      </div>
+      <button type="button" class="btn-submit" id="submitThuong" disabled onclick="processFile('thuong')">Xử Lý & Tải File</button>
+      <div id="msgThuong" class="msg"></div>
+    </div>
+
+    <div id="tab-vip" class="tab-content">
+      <div class="step-header"><div class="step-num">1</div><div class="step-title">Chọn File Gốc</div></div>
+      <div class="file-upload-wrapper">
+        <input type="file" id="fileVip" onchange="updateFileName('vip')">
+        <div class="file-upload-btn" id="btnFileVip" onclick="triggerFilePick('fileVip')">📁 Chọn file Bundle</div>
+      </div>
+      <div id="fileInfoVip" class="file-info-box">
+        <div class="fi-name" id="fiNameVip">—</div>
+        <div class="fi-row"><span class="fi-label">SIZE:</span><span class="fi-val" id="fiSizeVip">—</span></div>
+      </div>
+      <div class="step-header"><div class="step-num">2</div><div class="step-title">Chọn Chức Năng VIP</div></div>
+      <div class="packages" id="funcListVip">
+        <div class="pkg-card selected" data-val="aimchestv2" onclick="selectFunc('vip',this)"><div class="pkg-tags"><span class="tag">VIP</span></div><div class="pkg-title"><span class="pkg-ico">🫀💥</span> 1 · AimChest V2</div></div>
+        <div class="pkg-card" data-val="aimhead" onclick="selectFunc('vip',this)"><div class="pkg-tags"><span class="tag">VIP</span></div><div class="pkg-title"><span class="pkg-ico">💀</span> 2 · AimHead</div></div>
+        <div class="pkg-card" data-val="lockneck" onclick="selectFunc('vip',this)"><div class="pkg-tags"><span class="tag">VIP</span></div><div class="pkg-title"><span class="pkg-ico">🔒🦴</span> 3 · LockNeck</div></div>
+        <div class="pkg-card" data-val="dragatena" onclick="selectFunc('vip',this)"><div class="pkg-tags"><span class="tag">VIP</span></div><div class="pkg-title"><span class="pkg-ico">🌠⚡</span> 4 · Drag+Athena</div></div>
+        <div class="pkg-card" data-val="draghead" onclick="selectFunc('vip',this)"><div class="pkg-tags"><span class="tag">VIP</span></div><div class="pkg-title"><span class="pkg-ico">🌠💀</span> 5 · Drag+Head</div></div>
+        <div class="pkg-card" data-val="ditat" onclick="selectFunc('vip',this)"><div class="pkg-tags"><span class="tag">VIP</span></div><div class="pkg-title"><span class="pkg-ico">👑</span> 6 · Dị Tật R8</div></div>
+      </div>
+      <button type="button" class="btn-submit" id="submitVip" disabled onclick="processFile('vip')">Xử Lý & Tải File</button>
+      <div id="msgVip" class="msg"></div>
+    </div>
+
+    <div id="tab-aimvip" class="tab-content">
+      <div class="step-header"><div class="step-num">1</div><div class="step-title">Chọn File Gốc</div></div>
+      <div class="file-upload-wrapper">
+        <input type="file" id="fileAimVip" onchange="updateFileName('aimvip')">
+        <div class="file-upload-btn" id="btnFileAimVip" onclick="triggerFilePick('fileAimVip')">📁 Chọn file Bundle</div>
+      </div>
+      <div id="fileInfoAimVip" class="file-info-box">
+        <div class="fi-name" id="fiNameAimVip">—</div>
+        <div class="fi-row"><span class="fi-label">SIZE:</span><span class="fi-val" id="fiSizeAimVip">—</span></div>
+      </div>
+      <div class="step-header"><div class="step-num">2</div><div class="step-title">Chọn Chức Năng Aim VIP</div></div>
+      <div class="packages" id="funcListAimVip">
+        <div class="pkg-card selected" data-val="aimneckvip" onclick="selectFunc('aimvip',this)"><div class="pkg-tags"><span class="tag">AIM VIP</span></div><div class="pkg-title"><span class="pkg-ico">🦴👑</span> 1 · Aim Neck VIP</div></div>
+        <div class="pkg-card" data-val="aimngucvip" onclick="selectFunc('aimvip',this)"><div class="pkg-tags"><span class="tag">AIM VIP</span></div><div class="pkg-title"><span class="pkg-ico">🫀👑</span> 2 · Aim Ngực VIP</div></div>
+        <div class="pkg-card" data-val="ditatvip" onclick="selectFunc('aimvip',this)"><div class="pkg-tags"><span class="tag">AIM VIP</span></div><div class="pkg-title"><span class="pkg-ico">👑</span> 3 · Dị Tật VIP</div></div>
+        <div class="pkg-card" data-val="dragatenavip" onclick="selectFunc('aimvip',this)"><div class="pkg-tags"><span class="tag">AIM VIP</span></div><div class="pkg-title"><span class="pkg-ico">🌠⚡</span> 4 · Drag+Athena VIP</div></div>
+        <div class="pkg-card" data-val="normalvip" onclick="selectFunc('aimvip',this)"><div class="pkg-tags"><span class="tag">AIM VIP</span></div><div class="pkg-title"><span class="pkg-ico">⚙️</span> 5 · Normal VIP</div></div>
+        <div class="pkg-card" data-val="bodyvip" onclick="selectFunc('aimvip',this)"><div class="pkg-tags"><span class="tag">AIM VIP</span></div><div class="pkg-title"><span class="pkg-ico">🧍👑</span> 6 · Body VIP</div></div>
+        <div class="pkg-card" data-val="headvip" onclick="selectFunc('aimvip',this)"><div class="pkg-tags"><span class="tag">AIM VIP</span></div><div class="pkg-title"><span class="pkg-ico">💀👑</span> 7 · Head VIP</div></div>
+        <div class="pkg-card" data-val="aimlockatena" onclick="selectFunc('aimvip',this)"><div class="pkg-tags"><span class="tag">AIM VIP</span></div><div class="pkg-title"><span class="pkg-ico">🔒⚡</span> 8 · AimLock+Athena</div></div>
+      </div>
+      <button type="button" class="btn-submit" id="submitAimVip" disabled onclick="processFile('aimvip')">Xử Lý & Tải File</button>
+      <div id="msgAimVip" class="msg"></div>
+    </div>
+
+    <div id="tab-cachevip" class="tab-content">
+      <div class="step-header"><div class="step-num">1</div><div class="step-title">Chọn File Gốc</div></div>
+      <div class="file-upload-wrapper">
+        <input type="file" id="fileCacheVip" onchange="updateFileName('cachevip')">
+        <div class="file-upload-btn" id="btnFileCacheVip" onclick="triggerFilePick('fileCacheVip')">📁 Chọn file Bundle</div>
+      </div>
+      <div id="fileInfoCacheVip" class="file-info-box">
+        <div class="fi-name" id="fiNameCacheVip">—</div>
+        <div class="fi-row"><span class="fi-label">SIZE:</span><span class="fi-val" id="fiSizeCacheVip">—</span></div>
+      </div>
+      <div class="step-header"><div class="step-num">2</div><div class="step-title">Chọn Chức Năng Cache VIP</div></div>
+      <div class="packages" id="funcListCacheVip" style="grid-template-columns:1fr;">
+        <div class="pkg-card selected" data-val="cachevip_default" onclick="selectFunc('cachevip',this)">
+          <div class="pkg-tags"><span class="tag">CACHE VIP</span></div>
+          <div class="pkg-title"><span class="pkg-ico">💎</span> 1 · Cache VIP (Chưa hỗ trợ)</div>
+        </div>
+      </div>
+      <button type="button" class="btn-submit" id="submitCacheVip" disabled onclick="processFile('cachevip')">Xử Lý & Tải File</button>
+      <div id="msgCacheVip" class="msg"></div>
+    </div>
+
+    <div id="tab-shader" class="tab-content">
+      <div class="step-header"><div class="step-num">1</div><div class="step-title">Chọn File Shader</div></div>
+      <div class="file-upload-wrapper">
+        <input type="file" id="fileShader" onchange="updateFileName('shader')">
+        <div class="file-upload-btn" id="btnFileShader" onclick="triggerFilePick('fileShader')">📁 Chọn file Bundle (shaders / optionalavatarres_commonab_shader)</div>
+      </div>
+      <div id="fileInfoShader" class="file-info-box">
+        <div class="fi-name" id="fiNameShader">—</div>
+        <div class="fi-row"><span class="fi-label">SIZE:</span><span class="fi-val" id="fiSizeShader">—</span></div>
+      </div>
+
+      <div id="shaderEmptyHero" class="shader-empty-hero">
+        <span class="ico">🎨</span>
+        <div class="txt">Chưa có file shader nào được chọn</div>
+        <div class="sub">Chọn file Bundle ở bước 1 để bắt đầu</div>
+      </div>
+
+      <div id="shaderMain" style="display:none;">
+        <div class="shader-hero">
+          <div class="shader-hero-head">
+            <span class="shader-hero-ico">🎨</span>
+            <span class="shader-hero-title">Shader System</span>
+          </div>
+          <div class="shader-hero-desc">
+            Đã phát hiện <b id="totalShaderCount">0</b> shader. Chỉnh màu bên dưới rồi bấm <b>MAKE FILE</b>.
+          </div>
+          <div class="shader-detected" id="shaderDetectedChips"></div>
+        </div>
+
+        <div class="step-header"><div class="step-num">2</div><div class="step-title">Chọn Màu</div></div>
+
+        <div class="shader-color-grid-4">
+          <div class="shader-color-card chams">
+            <div class="scc-head"><span class="scc-ico">🔫</span><span class="scc-title">Chams Súng</span><span class="scc-count" id="countChamsSung">0</span></div>
+            <div class="scc-body"><div class="scc-row">
+              <input type="color" id="colorChamsSung" value="#00FF00" onchange="onShaderPresetChange('chams_sung', this.value)">
+              <input type="text" id="textChamsSung" value="#00FF00" onchange="onShaderPresetChange('chams_sung', this.value, 'text')">
+            </div></div>
+          </div>
+          <div class="shader-color-card dinhvi">
+            <div class="scc-head"><span class="scc-ico">🎯</span><span class="scc-title">Định Vị Súng</span><span class="scc-count" id="countDinhViSung">0</span></div>
+            <div class="scc-body"><div class="scc-row">
+              <input type="color" id="colorDinhViSung" value="#00FFFF" onchange="onShaderPresetChange('dinhvi_sung', this.value)">
+              <input type="text" id="textDinhViSung" value="#00FFFF" onchange="onShaderPresetChange('dinhvi_sung', this.value, 'text')">
+            </div></div>
+          </div>
+          <div class="shader-color-card chams-nguoi">
+            <div class="scc-head"><span class="scc-ico">🧍</span><span class="scc-title">Chams Nhân Vật</span><span class="scc-count" id="countChamsNguoi">0</span></div>
+            <div class="scc-body"><div class="scc-row">
+              <input type="color" id="colorChamsNguoi" value="#FF0000" onchange="onShaderPresetChange('chams_nguoi', this.value)">
+              <input type="text" id="textChamsNguoi" value="#FF0000" onchange="onShaderPresetChange('chams_nguoi', this.value, 'text')">
+            </div></div>
+          </div>
+          <div class="shader-color-card dinhvi-nguoi">
+            <div class="scc-head"><span class="scc-ico">👤</span><span class="scc-title">Định Vị NV</span><span class="scc-count" id="countDinhViNguoi">0</span></div>
+            <div class="scc-body"><div class="scc-row">
+              <input type="color" id="colorDinhViNguoi" value="#FFFF00" onchange="onShaderPresetChange('dinhvi_nguoi', this.value)">
+              <input type="text" id="textDinhViNguoi" value="#FFFF00" onchange="onShaderPresetChange('dinhvi_nguoi', this.value, 'text')">
+            </div></div>
+          </div>
+        </div>
+
+        <div class="shader-alpha-bar">
+          <div class="sab-head">
+            <span class="sab-label">Độ đậm màu (Alpha)</span>
+            <span class="sab-value" id="shaderIntVal">1.00</span>
+          </div>
+          <input type="range" id="shaderIntensity" min="0" max="1" step="0.05" value="1"
+            oninput="document.getElementById('shaderIntVal').textContent=parseFloat(this.value).toFixed(2)">
+        </div>
+
+        <div class="step-header"><div class="step-num">3</div><div class="step-title">Danh Sách Shader</div></div>
+
+        <div class="shader-type-selector">
+          <button type="button" class="st-btn active" data-type="all" onclick="switchShaderType('all')"><span class="st-ico">📋</span><span class="st-name">Tất Cả</span><span class="st-badge" id="stBadgeAll">0</span></button>
+          <button type="button" class="st-btn" data-type="chams_sung" onclick="switchShaderType('chams_sung')"><span class="st-ico">🔫</span><span class="st-name">Chams Súng</span><span class="st-badge" id="stBadgeChams">0</span></button>
+          <button type="button" class="st-btn" data-type="dinhvi_sung" onclick="switchShaderType('dinhvi_sung')"><span class="st-ico">🎯</span><span class="st-name">ĐV Súng</span><span class="st-badge" id="stBadgeDinhVi">0</span></button>
+          <button type="button" class="st-btn" data-type="chams_nguoi" onclick="switchShaderType('chams_nguoi')"><span class="st-ico">🧍</span><span class="st-name">Chams NV</span><span class="st-badge" id="stBadgeChamsNguoi">0</span></button>
+          <button type="button" class="st-btn" data-type="dinhvi_nguoi" onclick="switchShaderType('dinhvi_nguoi')"><span class="st-ico">👤</span><span class="st-name">ĐV NV</span><span class="st-badge" id="stBadgeDinhViNguoi">0</span></button>
+        </div>
+
+        <div class="filter-info" id="filterInfoBar">
+          <span class="fi-dot all"></span>
+          <span id="filterInfoText">Đang hiển thị tất cả shader</span>
+        </div>
+
+        <div class="shader-table-wrap">
+          <table class="shader-table" id="shaderTable">
+            <thead>
+              <tr>
+                <th style="width:28px;text-align:center;">✓</th>
+                <th style="width:32px;text-align:center;">#</th>
+                <th>Path / Tên</th>
+                <th style="width:70px;text-align:center;">Loại</th>
+                <th style="width:110px;">Nhóm</th>
+              </tr>
+            </thead>
+            <tbody id="shaderTableBody"></tbody>
+          </table>
+        </div>
+
+        <div class="shader-actions">
+          <button type="button" class="btn-rescan" onclick="rescanShader()">🔄 Rescan</button>
+          <button type="button" class="btn-make" id="btnMakeShader" onclick="processShaderMake()" disabled>💾 MAKE FILE</button>
+        </div>
+
+        <div id="msgShader" class="msg"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="loadingOverlay">
+  <div class="processing-box">
+    <div class="scan-line"></div>
+    <div class="processing-title">Please Wait</div>
+    <div class="processing-desc">PROCESSING DATA...</div>
+    <div class="processing-bar-wrapper"><div class="processing-bar-fill" id="processingBarFill"></div></div>
+    <div class="processing-percent"><span id="processingPercent">0</span><span class="unit">%</span></div>
+    <div class="processing-status"><span>Đang xử lý file</span>... <span class="pct"><span id="processingStatusPct">0</span>%</span></div>
+  </div>
+</div>
+
+<script>
+/* ====================================================================
+   1. HỆ THỐNG BẢN QUYỀN (KEY, THỜI GIAN, THIẾT BỊ)
+   ==================================================================== */
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const MS_PER_HOUR = 60 * 60 * 1000;
+let countdownInterval = null;
+
+// CẤU HÌNH DANH SÁCH KEY HỢP LỆ
+const VALID_KEYS = {
+  // Key tuần
+  "dolong-7d-xyz": { type: "week", value: 7 },
+  "dolong-7d-abc": { type: "week", value: 7 },
+  
+  // Key ngày
+  "dolong-1d-xxxxx": { type: "day", value: 1 },
+  "dolong-1d-yyyyy": { type: "day", value: 1 },
+  "dolong-1d-zzzzz": { type: "day", value: 1 },
+  "dolong-1d-aaaaa": { type: "day", value: 1 },
+  "dolong-1d-bbbbb": { type: "day", value: 1 },
+  
+  // Key giờ
+  "dolong-1h-xxxxx": { type: "hour", value: 1 },
+  "dolong-1h-yyyyy": { type: "hour", value: 1 },
+  "dolong-1h-zzzzz": { type: "hour", value: 1 },
+  "dolong-1h-aaaaa": { type: "hour", value: 1 },
+  "dolong-1h-bbbbb": { type: "hour", value: 1 }
+};
+
+const MAX_DEVICES = 15; // Giới hạn 15 thiết bị cho mỗi key
+
+async function handleLogin() {
+  const inputVal = document.getElementById('keyInput').value.trim();
+  const btn = document.getElementById('btnSubmitKey');
+  const err = document.getElementById('gateErr');
+
+  // Kiểm tra key có trong danh sách không
+  if (!VALID_KEYS[inputVal]) {
+    err.textContent = "Key không hợp lệ hoặc không tồn tại!";
+    err.style.display = 'block';
+    if (window.SFX) SFX.error();
+    return;
+  }
+
+  btn.textContent = "ĐANG KIỂM TRA...";
+  btn.disabled = true;
+  err.style.display = 'none';
+
+  try {
+    const fpPromise = FingerprintJS.load();
+    const fp = await fpPromise;
+    const result = await fp.get();
+    const deviceId = result.visitorId;
+
+    let allowedDevices = JSON.parse(localStorage.getItem('tun_devices_' + inputVal) || '[]');
+
+    if (!allowedDevices.includes(deviceId)) {
+      if (allowedDevices.length >= MAX_DEVICES) {
+        err.textContent = `Key này đã đạt giới hạn ${MAX_DEVICES} thiết bị!`;
+        err.style.display = 'block';
+        btn.textContent = "XÁC NHẬN KÍCH HOẠT";
+        btn.disabled = false;
+        if (window.SFX) SFX.error();
+        return;
+      }
+      allowedDevices.push(deviceId);
+      localStorage.setItem('tun_devices_' + inputVal, JSON.stringify(allowedDevices));
+    }
+
+    let expireTime = localStorage.getItem('tun_auth_expire_' + inputVal);
+    if (!expireTime) {
+      // Tính thời gian dựa vào loại key
+      let durationMs = 0;
+      const keyInfo = VALID_KEYS[inputVal];
+      if (keyInfo.type === 'week') durationMs = keyInfo.value * 7 * MS_PER_DAY;
+      else if (keyInfo.type === 'day') durationMs = keyInfo.value * MS_PER_DAY;
+      else if (keyInfo.type === 'hour') durationMs = keyInfo.value * MS_PER_HOUR;
+      
+      expireTime = Date.now() + durationMs;
+      localStorage.setItem('tun_auth_expire_' + inputVal, expireTime);
+    } else {
+      expireTime = parseInt(expireTime);
+    }
+
+    localStorage.setItem('tun_auth_key', inputVal);
+    launchApp(expireTime, inputVal);
+
+  } catch (e) {
+    console.warn("Fingerprint lỗi:", e);
+    // Vẫn cho vào nếu lỗi fingerprint (fallback)
+    localStorage.setItem('tun_auth_key', inputVal);
+    
+    let expireTime = localStorage.getItem('tun_auth_expire_' + inputVal);
+    if (!expireTime) {
+      let durationMs = 0;
+      const keyInfo = VALID_KEYS[inputVal];
+      if (keyInfo.type === 'week') durationMs = keyInfo.value * 7 * MS_PER_DAY;
+      else if (keyInfo.type === 'day') durationMs = keyInfo.value * MS_PER_DAY;
+      else if (keyInfo.type === 'hour') durationMs = keyInfo.value * MS_PER_HOUR;
+      
+      expireTime = Date.now() + durationMs;
+      localStorage.setItem('tun_auth_expire_' + inputVal, expireTime);
+    }
+    launchApp(parseInt(expireTime), inputVal);
+  }
+}
+
+function launchApp(expireTime, keyStr) {
+  document.getElementById('gateScreen').classList.add('hide');
+  document.getElementById('loadingScreen').classList.add('on');
+  document.getElementById('keyBadge').style.display = 'flex';
+  document.getElementById('keyBadgeKey').textContent = keyStr;
+  
+  if (window.SFX) SFX.success();
+  startCountdown(expireTime);
+  startLoadingAnimation();
+}
+
+function startCountdown(expire) {
+  const lblRemain = document.getElementById('keyBadgeRemain');
+  if (countdownInterval) clearInterval(countdownInterval);
+
+  function updateTimer() {
+    const remain = expire - Date.now();
+    if (remain <= 0) {
+      clearInterval(countdownInterval);
+      lblRemain.textContent = "ĐÃ HẾT HẠN";
+      lblRemain.style.color = "var(--red)";
+      if (window.SFX) SFX.error();
+      setTimeout(() => {
+        localStorage.removeItem('tun_auth_key');
+        alert("Key đã hết hạn sử dụng. Vui lòng liên hệ Admin!");
+        location.reload();
+      }, 1000);
+      return;
+    }
+    
+    let totalSeconds = Math.floor(remain / 1000);
+    let d = Math.floor(totalSeconds / (3600 * 24));
+    let h = Math.floor((totalSeconds % (3600 * 24)) / 3600);
+    let m = Math.floor((totalSeconds % 3600) / 60);
+    let s = totalSeconds % 60;
+    
+    lblRemain.textContent = `${d} ngày ${h.toString().padStart(2,'0')}h ${m.toString().padStart(2,'0')}m ${s.toString().padStart(2,'0')}s`;
+    lblRemain.style.color = (remain < MS_PER_DAY) ? "var(--red)" : "var(--amber)";
+  }
+  
+  updateTimer();
+  countdownInterval = setInterval(updateTimer, 1000);
+}
+
+function startLoadingAnimation() {
+  var screen = document.getElementById('loadingScreen');
+  var circle = document.getElementById('loadingProgressCircle');
+  var bar = document.getElementById('loadingBarFill');
+  var pctBig = document.getElementById('loadingPercentBig');
+  var statusPct = document.getElementById('loadingStatusPct');
+  var start = performance.now(); var duration = 1500;
+  
+  function anim(now) {
+    var p = Math.min((now - start) / duration, 1);
+    var pct = Math.floor(p * 100);
+    if(circle) circle.style.strokeDashoffset = String(440 - (440 * p));
+    if(bar) bar.style.width = pct + '%';
+    if(pctBig) pctBig.textContent = pct;
+    if(statusPct) statusPct.textContent = pct;
+    if(p < 1) requestAnimationFrame(anim);
+    else {
+      screen.classList.remove('on');
+      document.getElementById('toolScreen').classList.add('on');
+      startServerCounter();
+    }
+  }
+  requestAnimationFrame(anim);
+}
+
+window.exitToolStub = function(){
+  if(window.SFX) SFX.click();
+  if(confirm('Bạn có chắc muốn đăng xuất và thoát?')){
+    localStorage.removeItem('tun_auth_key');
+    location.reload();
+  }
+};
+
+window.addEventListener('DOMContentLoaded', () => {
+  const savedKey = localStorage.getItem('tun_auth_key');
+  
+  if (savedKey && VALID_KEYS[savedKey]) {
+    const expireTime = localStorage.getItem('tun_auth_expire_' + savedKey);
+    if (expireTime && Date.now() < parseInt(expireTime)) {
+      launchApp(parseInt(expireTime), savedKey);
+      return;
+    } else {
+      localStorage.removeItem('tun_auth_key');
+      localStorage.removeItem('tun_auth_expire_' + savedKey);
+    }
+  }
+  
+  document.getElementById('gateScreen').classList.remove('hide');
+});
+
+/* ====================================================================
+   2. HIỆU ỨNG NỀN VÀ ÂM THANH
+   ==================================================================== */
+(function(){
+  "use strict";
+  var cvs = document.getElementById('matrixRain');
+  if (!cvs) return;
+  var ctx = cvs.getContext('2d');
+  var W, H, cols, drops, fontSize = 14;
+  var chars = 'ｦｧｨｩｪｫｬｭｮｯｰｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789ABCDEF'.split('');
+  function resize(){
+    W = cvs.width = window.innerWidth;
+    H = cvs.height = window.innerHeight;
+    cols = Math.floor(W / fontSize);
+    drops = [];
+    for (var i = 0; i < cols; i++) drops[i] = Math.random() * H / fontSize;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  var last = 0, interval = 55;
+  function draw(t){
+    requestAnimationFrame(draw);
+    if (t - last < interval) return;
+    last = t;
+    ctx.fillStyle = 'rgba(2,4,10,0.08)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.font = fontSize + 'px monospace';
+    for (var i = 0; i < cols; i++){
+      var ch = chars[Math.floor(Math.random() * chars.length)];
+      var y = drops[i] * fontSize;
+      var leading = Math.random() < 0.03;
+      ctx.fillStyle = leading ? '#00ffe5' : '#00ff9c';
+      ctx.shadowColor = leading ? '#00ffe5' : '#00ff9c';
+      ctx.shadowBlur = leading ? 12 : 4;
+      ctx.fillText(ch, i * fontSize, y);
+      if (y > H && Math.random() > 0.975) drops[i] = 0;
+      drops[i] += 0.8;
+    }
+    ctx.shadowBlur = 0;
+  }
+  requestAnimationFrame(draw);
+})();
+
+(function(){
+  "use strict";
+  var AC = window.AudioContext || window.webkitAudioContext;
+  var ctx = null;
+  function ensureCtx(){
+    if (!ctx && AC){ try { ctx = new AC(); } catch(e){ ctx = null; } }
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(function(){});
+    return ctx;
+  }
+  ['pointerdown','touchstart','keydown'].forEach(function(ev){
+    window.addEventListener(ev, function once(){
+      ensureCtx();
+      window.removeEventListener(ev, once, true);
+    }, true);
+  });
+  function tone(freq, dur, type, gain, slideTo){
+    var c = ensureCtx(); if (!c) return;
+    var t0 = c.currentTime;
+    var o = c.createOscillator();
+    var g = c.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t0);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain || 0.12, t0 + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(c.destination);
+    o.start(t0); o.stop(t0 + dur + 0.02);
+  }
+  function noise(dur, gain, filterFreq){
+    var c = ensureCtx(); if (!c) return;
+    var t0 = c.currentTime;
+    var buf = c.createBuffer(1, Math.floor(c.sampleRate * dur), c.sampleRate);
+    var d = buf.getChannelData(0);
+    for (var i=0; i<d.length; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/d.length, 2);
+    var src = c.createBufferSource(); src.buffer = buf;
+    var f = c.createBiquadFilter(); f.type='highpass'; f.frequency.value = filterFreq || 800;
+    var g = c.createGain();
+    g.gain.setValueAtTime(gain || 0.08, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(f); f.connect(g); g.connect(c.destination);
+    src.start(t0);
+  }
+  window.SFX = {
+    click: function(){ tone(680, 0.05, 'triangle', 0.09, 820); },
+    tab: function(){ tone(520, 0.06, 'sine', 0.10, 720); setTimeout(function(){ tone(880,0.07,'sine',0.07); }, 30); },
+    select: function(){ tone(720, 0.06, 'triangle', 0.10, 900); setTimeout(function(){ tone(1100, 0.09, 'sine', 0.08, 1320); }, 40); },
+    unselect: function(){ tone(520, 0.06, 'sine', 0.07, 420); },
+    success: function(){ tone(660,0.10,'sine',0.10); setTimeout(function(){ tone(880,0.10,'sine',0.10); },90); setTimeout(function(){ tone(1320,0.18,'sine',0.10); },180); },
+    error: function(){ tone(220,0.14,'sawtooth',0.10,140); setTimeout(function(){ tone(160,0.18,'sawtooth',0.10,100); },100); },
+    pick: function(){ tone(1000,0.04,'square',0.06,1200); noise(0.08,0.04,1500); },
+    make: function(){
+      tone(520,0.08,'sine',0.09,720);
+      setTimeout(function(){ tone(720,0.08,'sine',0.09,980); },70);
+      setTimeout(function(){ tone(980,0.12,'sine',0.09,1320); },140);
+      setTimeout(function(){ tone(1320,0.20,'sine',0.10); },240);
+    },
+    toggle: function(on){ on ? tone(880,0.04,'square',0.05,1000) : tone(560,0.04,'square',0.05,480); }
+  };
+})();
+
+var serverCount = 0;
+function updateServerUI(ms){ var el = document.getElementById('serverCounterNum'); if(el) el.textContent = ms; }
+function tickServer(){ var ms = Math.floor(Math.random() * 999) + 1; serverCount++; updateServerUI(ms); setTimeout(tickServer, ms); }
+function startServerCounter(){ tickServer(); }
+
+/* ====================================================================
+   3. CORE TOOL (GIỮ NGUYÊN TOÀN BỘ CODE GỐC CỦA BẠN)
+   ==================================================================== */
+(function(){
+"use strict";
+try{
+
+window.__HEX_DATA = {
+  chestv2: [{ off: 0xD300, hex: "01 00 00 00 64 DF CA 3D E4 8C 02 3E 00 00 00 00" }, { off: 0xD310, hex: "9F 48 62 3D 27 C1 8B 3C C0 D0 F8 B9 00 00 00 00" }, { off: 0xD5F0, hex: "01 00 00 00 31 11 CB 3D 72 83 05 3E 00 00 00 00" }, { off: 0xD600, hex: "BD F9 4F 3D 00 84 A7 37 00 00 80 B1 00 00 00 00" }],
+  neck: [{ off: 0xD300, hex: "01 00 00 00 3B 1C CC 3D 8C E0 0C 3E 00 00 00 00" }, { off: 0xD310, hex: "6C 11 0F 3D 27 C1 8B 3C C0 D0 F8 B9 00 00 00 00" }, { off: 0xD5F0, hex: "01 00 00 00 B6 AC CB 3D D4 BF 0F 3E 00 00 00 00" }, { off: 0xD600, hex: "7E B8 22 3D 00 84 A7 37 00 00 80 B1 00 00 00 00" }],
+  necksafe: [{ off: 0xD300, hex: "01 00 00 00 72 DF CA 3D E4 8C 02 3E 00 00 00 00" }, { off: 0xD310, hex: "40 DE AB 3B 27 C1 8B 3C C0 D0 F8 B9 00 00 00 00" }, { off: 0xD5F0, hex: "01 00 00 00 41 11 CB 3D 72 83 05 3E 00 00 00 00" }, { off: 0xD600, hex: "36 3C BD 3B 00 84 A7 37 00 00 80 B1 00 00 00 00" }],
+  bodysafe: [{ off: 0x5090, hex: "00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00" }, { off: 0x50A0, hex: "00 00 00 00 00 00 00 00 7B F9 6C BD 58 34 09 BB" }, { off: 0x5420, hex: "00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00" }, { off: 0xD300, hex: "01 00 00 00 72 DF CA 3D E4 8C 02 3E 00 00 00 00" }, { off: 0xD310, hex: "60 5B FF 3D 03 D1 93 3C 80 99 EF B9 00 00 00 00" }, { off: 0xD5F0, hex: "01 00 00 00 41 11 CB 3D 72 83 05 3E 00 00 00 00" }, { off: 0xD600, hex: "0B 26 FE 3D AE 83 83 3C 07 45 F3 B9 00 00 00 00" }],
+  zoro: [{ off: 0x10, hex: "78 00 32 30 32 32 2E 33 2E 34 37 66 31 00 00 00" }, { off: 0xB0, hex: "32 30 32 32 2E 33 2E 34 37 66 31 00 09 00 00 00" }, { off: 0xD300, hex: "01 00 00 00 59 DF CA 3D E4 8C 02 3E 00 00 00 00" }, { off: 0xD310, hex: "B5 8F 8F BC 27 C1 8B 3C C0 D0 F8 B9 00 00 00 00" }, { off: 0xD5F0, hex: "01 00 00 00 FD C3 CA 3D 72 83 05 3E 00 00 00 00" }, { off: 0xD600, hex: "7D B6 A7 BC 00 84 A7 37 00 00 80 B1 00 00 00 00" }],
+  neckdrag: [{ off: 0x10, hex: "78 00 32 30 32 32 2E 33 2E 34 37 66 31 00 00 00" }, { off: 0xB0, hex: "32 30 32 32 2E 33 2E 34 37 66 31 00 09 00 00 00" }, { off: 0xD300, hex: "01 00 00 00 59 DF CA 3D E4 8C 02 3E 00 00 00 00" }, { off: 0xD5F0, hex: "01 00 00 00 FD C3 CA 3D 72 83 05 3E 00 00 00 00" }],
+  chest: [{ off: 0x10, hex: "78 00 32 30 32 32 2E 33 2E 34 37 66 31 00 00 00" }, { off: 0xB0, hex: "32 30 32 32 2E 33 2E 34 37 66 31 00 09 00 00 00" }, { off: 0xD300, hex: "01 00 00 00 59 DF CA 3D E4 8C 02 3E 00 00 00 00" }, { off: 0xD310, hex: "51 C6 79 BC 27 C1 8B 3C C0 D0 F8 B9 00 00 00 00" }, { off: 0xD5F0, hex: "01 00 00 00 3E 11 CB 3D 72 83 05 3E 00 00 00 00" }, { off: 0xD600, hex: "43 8B 30 BC 00 84 A7 37 00 00 80 B1 00 00 00 00" }],
+  drag: [{ off: 0x10, hex: "78 00 32 30 32 32 2E 33 2E 34 37 66 31 00 00 00" }, { off: 0xB0, hex: "32 30 32 32 2E 33 2E 34 37 66 31 00 09 00 00 00" }, { off: 0xD300, hex: "01 00 00 00 83 C0 CA 3D E4 8C 02 3E 00 00 00 00" }, { off: 0xD5F0, hex: "01 00 00 00 83 C0 CA 3D 72 83 05 3E 00 00 00 00" }],
+  magic: [{ off: 0x10, hex: "78 00 32 30 32 32 2E 33 2E 34 37 66 31 00 00 00" }, { off: 0xB0, hex: "32 30 32 32 2E 33 2E 34 37 66 31 00 09 00 00 00" }, { off: 0xCC00, hex: "00 00 00 00 00 00 00 00 01 00 00 00 30 01 89 3F" }, { off: 0xCC10, hex: "30 01 89 3F 02 00 00 00 7D 1A 89 BD 50 26 9F 3B" }, { off: 0xDE90, hex: "00 00 00 00 00 00 00 00 01 00 00 00 30 01 89 3F" }, { off: 0xDEA0, hex: "30 01 89 3F 00 00 00 00 0A D7 A3 BD 0A D7 23 BC" }],
+  bung: [{ off: 0x10, hex: "78 00 32 30 32 32 2E 33 2E 34 37 66 31 00 00 00" }, { off: 0xB0, hex: "32 30 32 32 2E 33 2E 34 37 66 31 00 09 00 00 00" }, { off: 0x50A0, hex: "2C CD 1E 3E 00 00 00 00 00 00 10 C1 EA 3D 1E 3B" }, { off: 0x50B0, hex: "62 96 04 3C 00 00 00 00 02 00 00 00 00 00 00 00" }]
+};
+window.__VIP_HEX_DATA = {
+  aimchestv2: [{ off: 0x10, hex: "78 00 32 30 31 38 2E 34 2E 31 32 66 31 00 00 00" }, { off: 0xB0, hex: "32 30 31 38 2E 34 2E 31 32 66 31 00 09 00 00 00" }, { off: 0xCC00, hex: "00 00 00 00 00 00 00 00 01 00 00 00 29 5C 8F 3D" }, { off: 0xCC10, hex: "29 5C 8F 3D 02 00 00 00 7D 1A 89 BD 50 26 9F 3B" }, { off: 0xD300, hex: "01 00 00 00 06 EF CA 3D E4 8C 02 3E 00 00 00 00" }, { off: 0xD310, hex: "71 E8 2D BC 29 C1 8B 3C C0 D0 F8 B9 00 00 00 00" }, { off: 0xD5F0, hex: "01 00 00 00 B3 07 CB 3D 72 83 05 3E 00 00 00 00" }, { off: 0xD600, hex: "83 23 33 BC 40 85 A7 37 00 00 80 B1 00 00 00 00" }],
+  aimhead: [{ off: 0x10, hex: "78 00 32 30 31 38 2E 34 2E 31 32 66 31 00 00 00" }, { off: 0xB0, hex: "32 30 31 38 2E 34 2E 31 32 66 31 00 09 00 00 00" }, { off: 0xCC00, hex: "00 00 00 00 00 00 00 00 01 00 00 00 29 5C 8F 3D" }, { off: 0xCC10, hex: "29 5C 8F 3D 02 00 00 00 7D 1A 89 BD 50 26 9F 3B" }, { off: 0xD300, hex: "01 00 00 00 06 EF CA 3D E4 8C 02 3E 00 00 00 00" }, { off: 0xD310, hex: "71 E8 2D BC 29 C1 8B 3C C0 D0 F8 B9 00 00 00 00" }, { off: 0xD5F0, hex: "01 00 00 00 B3 07 CB 3D 72 83 05 3E 00 00 00 00" }, { off: 0xD600, hex: "83 23 33 BC 40 85 A7 37 00 00 80 B1 00 00 00 00" }],
+  lockneck: [{ off: 0xD300, hex: "01 00 00 00 3B 1C CC 3D 8C E0 0C 3E 00 00 00 00" }, { off: 0xD310, hex: "6C 11 0F 3D 27 C1 8B 3C C0 D0 F8 B9 00 00 00 00" }, { off: 0xD5F0, hex: "01 00 00 00 B6 AC CB 3D D4 BF 0F 3E 00 00 00 00" }, { off: 0xD600, hex: "7E B8 22 3D 00 84 A7 37 00 00 80 B1 00 00 00 00" }],
+  dragatena: [{ off: 0x10, hex: "78 00 32 30 32 32 2E 33 2E 34 37 66 31 00 00 00" }, { off: 0xB0, hex: "32 30 32 32 2E 33 2E 34 37 66 31 00 09 00 00 00" }, { off: 0x64B0, hex: "00 00 00 00 00 00 00 00 00 00 00 00 00 00 FA 43" }, { off: 0x7140, hex: "74 54 6F 65 55 17 F9 B4 31 69 74 EB 89 29 C5 BE" }, { off: 0x7150, hex: "16 DC 98 BD BB 82 97 B4 00 00 00 00 BF B2 2F 3F" }],
+  draghead: [{ off: 0x7140, hex: "74 54 6F 65 55 17 F9 B4 31 69 74 EB 89 29 C5 BE" }, { off: 0x7150, hex: "16 DC 98 BD BB 82 97 B4 00 00 00 00 BF B2 2F 3F" }],
+  ditat: [{ off: 0x7660, hex: "00 00 80 3F 09 00 00 00 62 6F 6E 65 5F 48 69 70" }, { off: 0x7670, hex: "73 00 00 00 A1 58 C3 05 B2 F7 1F A4 E1 2C 3B BD" }]
+};
+window.__AIMVIP_HEX_DATA = {
+  aimneckvip: [{ off: 0x7140, hex: "74 54 6F 65 55 17 F9 B4 31 69 74 EB 9B 92 2E BD" }, { off: 0x7150, hex: "5B 01 76 BB 14 FE CC B1 CF 28 B8 AA 15 EB A8 B4" }],
+  aimngucvip: [{ off: 0x7140, hex: "74 54 6F 65 55 17 F9 B4 31 69 74 EB 9B 92 2E BD" }, { off: 0x7150, hex: "5B 01 76 BB 14 FE CC B1 CF 28 B8 AA 15 EB A8 B4" }],
+  ditatvip: [{ off: 0x7660, hex: "00 00 80 3F 09 00 00 00 62 6F 6E 65 5F 48 69 70" }, { off: 0x7670, hex: "73 00 00 00 A1 58 C3 05 B2 F7 1F A4 E1 2C 3B BD" }],
+  dragatenavip: [{ off: 0x7140, hex: "74 54 6F 65 55 17 F9 B4 31 69 74 EB 89 29 C5 BE" }],
+  normalvip: [{ off: 0x7140, hex: "74 54 6F 65 55 17 F9 B4 31 69 74 EB AA 7D 7A BE" }],
+  bodyvip: [{ off: 0x7140, hex: "74 54 6F 65 55 17 F9 B4 31 69 74 EB FB F3 BF BE" }],
+  headvip: [{ off: 0x7660, hex: "00 00 80 3F 09 00 00 00 62 6F 6E 65 5F 48 69 70" }],
+  aimlockatena: []
+};
+
+function getDataSet(type, func){
+  if(type === 'vip') return window.__VIP_HEX_DATA[func] || null;
+  if(type === 'aimvip') return window.__AIMVIP_HEX_DATA[func] || null;
+  return window.__HEX_DATA[func] || null;
+}
+
+const a4 = n => (n + 3) & ~3;
+const enc = s => new TextEncoder().encode(s);
+const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const hex2rgb = h => { const m = /^#?([0-9a-f]{6})$/i.exec(String(h).trim()); if (!m) return null; const n = parseInt(m[1], 16); return [((n>>16)&255)/255, ((n>>8)&255)/255, (n&255)/255]; };
+
+function lz4dec(src, outSize){
+  const dst = new Uint8Array(outSize); const n = src.length; let i = 0, o = 0;
+  while (i < n){
+    const tok = src[i++]; let lit = tok >> 4;
+    if (lit === 15){ let b; do { if (i >= n) throw new Error('LZ4'); b = src[i++]; lit += b; } while (b === 255); }
+    if (lit){ if (o + lit > outSize) throw new Error('LZ4'); dst.set(src.subarray(i, i + lit), o); i += lit; o += lit; }
+    if (i >= n) break;
+    const off = src[i] | (src[i+1] << 8); i += 2;
+    if (off === 0 || off > o) throw new Error('LZ4');
+    let ml = tok & 15;
+    if (ml === 15){ let b; do { if (i >= n) throw new Error('LZ4'); b = src[i++]; ml += b; } while (b === 255); }
+    ml += 4; if (o + ml > outSize) throw new Error('LZ4');
+    let sp = o - off; for (let k = 0; k < ml; k++) dst[o++] = dst[sp++];
+  }
+  return dst;
+}
+
+function parseBundle(u8){
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength); let p = 0;
+  const cstr = () => { let s = ''; while (u8[p]) s += String.fromCharCode(u8[p++]); p++; return s; };
+  if (cstr() !== 'UnityFS') throw new Error('Không phải UnityFS');
+  const fmt = dv.getUint32(p, false); p += 4; cstr(); cstr();
+  const declared = Number(dv.getBigInt64(p, false)); p += 8;
+  const ciSize = dv.getUint32(p, false); p += 4; const uiSize = dv.getUint32(p, false); p += 4; const flags = dv.getUint32(p, false); p += 4;
+  const headerEnd = p; const ic = flags & 0x3F;
+  let infoOff, info, dataStart;
+  if (flags & 0x80){
+    dataStart = (headerEnd + 15) & ~15; infoOff = null;
+    const from = Math.min(declared, u8.length) - ciSize;
+    for (let off = from; off >= Math.max(0, from - 80000); off--){
+      try { info = (ic === 2 || ic === 3) ? lz4dec(u8.subarray(off, off + ciSize), uiSize) : u8.subarray(off, off + ciSize).slice(); infoOff = off; break; } catch (e) {}
+    }
+    if (infoOff === null) throw new Error('Lỗi blocksInfo');
+  } else {
+    if (fmt >= 7 || (flags & 0x200)) p = (p + 15) & ~15;
+    infoOff = p; const infoRaw = u8.subarray(p, p + ciSize);
+    info = (ic === 2 || ic === 3) ? lz4dec(infoRaw, uiSize) : infoRaw.slice();
+    dataStart = infoOff + ciSize; if (flags & 0x200) dataStart = (dataStart + 15) & ~15;
+  }
+  const idv = new DataView(info.buffer, info.byteOffset, info.byteLength); let q = 16;
+  const nB = idv.getUint32(q, false); q += 4; const blocks = [];
+  for (let i = 0; i < nB; i++){ blocks.push({ u: idv.getUint32(q,false), c: idv.getUint32(q+4,false), f: idv.getUint16(q+8,false) }); q += 10; }
+  const nN = idv.getUint32(q, false); q += 4; const nodes = [];
+  for (let i = 0; i < nN; i++){
+    const off = Number(idv.getBigInt64(q,false)), sz = Number(idv.getBigInt64(q+8,false)); const nf = idv.getUint32(q+16,false); q += 20;
+    let nm = ''; while (info[q]) nm += String.fromCharCode(info[q++]); q++;
+    nodes.push({ off, size: sz, flags: nf, name: nm });
+  }
+  return { fmt, declared, ciSize, uiSize, flags, blocks, nodes, dataStart, infoOff, info };
+}
+
+function parseSF(cab){
+  const dv = new DataView(cab.buffer, cab.byteOffset, cab.byteLength);
+  const dataOffset = Number(dv.getBigInt64(32, false)); let p = 48;
+  const cstr = () => { let s=''; while (cab[p]) s += String.fromCharCode(cab[p++]); p++; return s; };
+  cstr(); p += 4; const hasTT = cab[p]; p += 1;
+  const i32 = () => { const v = dv.getInt32(p, true); p += 4; return v; };
+  const tcount = i32(); const types = [];
+  for (let i = 0; i < tcount; i++){
+    const cid = i32(); p += 19; let nodes = null, sb = null;
+    if (hasTT){
+      const nn = i32(), sbs = i32(); nodes = [];
+      for (let k = 0; k < nn; k++){ nodes.push({ ver: dv.getUint16(p, true), level: cab[p+2], tflags: cab[p+3], to: dv.getUint32(p+4, true), no: dv.getUint32(p+8, true), bsize: dv.getInt32(p+12, true), idx: dv.getInt32(p+16, true), meta: dv.getInt32(p+20, true) }); p += 32; }
+      sb = cab.slice(p, p + sbs); p += sbs; const nd = i32(); p += nd * 4;
+    }
+    types.push({ cid, nodes, sb });
+  }
+  const ocount = i32(); const objs = [];
+  for (let i = 0; i < ocount; i++){
+    p = a4(p); const ent = p; const pid = dv.getBigInt64(p, true); const off = Number(dv.getBigInt64(p+8, true)); const size = dv.getUint32(p+16, true); const tid = dv.getInt32(p+20, true); p += 24;
+    objs.push({ pid, off, size, tid, cid: types[tid].cid, ent });
+  }
+  return { dataOffset, hasTT, types, objs, cab };
+}
+
+const COMMON = "AABB\0AnimationClip\0AnimationCurve\0AnimationState\0Array\0Base\0BitField\0bitset\0bool\0char\0ColorRGBA\0Component\0data\0deque\0double\0dynamic_array\0FastPropertyName\0first\0float\0Font\0GameObject\0Generic Mono\0GradientNEW\0GUID\0GUIStyle\0int\0list\0long long\0map\0Matrix4x4f\0MdFour\0MonoBehaviour\0MonoScript\0m_ByteSize\0m_Curve\0m_EditorClassIdentifier\0m_EditorHideFlags\0m_Enabled\0m_ExtensionPtr\0m_GameObject\0m_Index\0m_IsArray\0m_IsStatic\0m_MetaFlag\0m_Name\0m_ObjectHideFlags\0m_PrefabInternal\0m_PrefabParentObject\0m_Script\0m_StaticEditorFlags\0m_Type\0m_Version\0Object\0pair\0PPtr<Component>\0PPtr<GameObject>\0PPtr<Material>\0PPtr<MonoBehaviour>\0PPtr<MonoScript>\0PPtr<Object>\0PPtr<Prefab>\0PPtr<Sprite>\0PPtr<TextAsset>\0PPtr<Texture>\0PPtr<Texture2D>\0PPtr<Transform>\0Prefab\0Quaternionf\0Rectf\0RectInt\0RectOffset\0second\0set\0short\0size\0SInt16\0SInt32\0SInt64\0SInt8\0staticvector\0string\0TextAsset\0TextMesh\0Texture\0Texture2D\0Transform\0TypelessData\0UInt16\0UInt32\0UInt64\0UInt8\0unsigned int\0unsigned long long\0unsigned short\0vector\0Vector2f\0Vector3f\0Vector4f\0m_ScriptingClassIdentifier\0Gradient\0Type*\0int2_storage\0int3_storage\0BoundsInt\0m_CorrespondingSourceObject\0m_PrefabInstance\0m_PrefabAsset\0FileSize\0Hash128\0";
+const COMMON_B = enc(COMMON);
+function sname(sb, off){ const buf = (off & 0x80000000) ? COMMON_B : sb; let o = off & 0x7fffffff, s = ''; while (buf[o]) s += String.fromCharCode(buf[o++]); return s; }
+function buildNodes(t){ return t.nodes.map(n => ({ type: sname(t.sb, n.to), name: sname(t.sb, n.no), level: n.level, meta: n.meta })); }
+function makeReader(data){ const dv = new DataView(data.buffer, data.byteOffset, data.byteLength); return { data, dv, p: 0, align(){ this.p = a4(this.p); } }; }
+
+function readVal(nodes, i, r, trace){
+  const n = nodes[i], t = n.type, doAlign = (n.meta & 0x4000) !== 0; const kids = []; let j = i + 1;
+  while (j < nodes.length && nodes[j].level > n.level){ if (nodes[j].level === n.level + 1) kids.push(j); j++; }
+  let v;
+  switch (t){
+    case 'SInt8': case 'UInt8': case 'char': case 'bool': v = r.data[r.p]; r.p += 1; break;
+    case 'SInt16': case 'UInt16': case 'short': case 'unsigned short': r.p += 2; break;
+    case 'SInt32': case 'UInt32': case 'int': case 'unsigned int': case 'Type*': case 'float': r.p += 4; break;
+    case 'SInt64': case 'UInt64': case 'long long': case 'unsigned long long': case 'FileSize': case 'double': r.p += 8; break;
+    case 'string': { const st = r.p; const ln = r.dv.getInt32(r.p,true); r.p += 4 + ln; r.align(); if(trace) trace.push({ node: n.name, start: st, val: new TextDecoder().decode(r.data.subarray(st+4, st+4+ln)) }); break; }
+    case 'TypelessData': { const ln = r.dv.getInt32(r.p,true); r.p += 4 + ln; break; }
+    default: {
+      if (kids.length && nodes[kids[0]].type === 'Array'){
+        const ai = kids[0], ak = []; let k = ai + 1;
+        while (k < nodes.length && nodes[k].level > nodes[ai].level){ if (nodes[k].level === nodes[ai].level + 1) ak.push(k); k++; }
+        const size = r.dv.getInt32(r.p,true); r.p += 4; v = [];
+        for (let m = 0; m < size; m++) v.push(readVal(nodes, ak[1], r, trace));
+        if (nodes[ai].meta & 0x4000) r.align();
+      } else {
+        v = {}; for (const c of kids) v[nodes[c].name] = readVal(nodes, c, r, trace);
+      }
+    }
+  }
+  if (doAlign) r.align(); return v;
+}
+function objBody(sf, o){ return sf.cab.subarray(sf.dataOffset + o.off, sf.dataOffset + o.off + o.size); }
+function readObj(sf, o, trace){ return readVal(buildNodes(sf.types[o.tid]), 0, makeReader(objBody(sf, o)), trace); }
+
+function readShaderProps(body){
+  const dv = new DataView(body.buffer, body.byteOffset, body.byteLength); let p = 0;
+  const rd = () => { const v = dv.getInt32(p, true); p += 4; return v; };
+  const str = () => { const n = rd(); if (n < 0 || p + n > body.length) throw new Error('str'); const s = new TextDecoder().decode(body.subarray(p, p+n)); p = a4(p + n); return s; };
+  str(); const cnt = rd(); if (cnt < 0 || cnt > 1000) throw new Error('prop'); const props = [];
+  for (let i = 0; i < cnt; i++){
+    const name = str(), desc = str(); const na = rd(); for (let k = 0; k < na; k++) str(); const type = rd(); p += 4;
+    const valOff = p; const val = [dv.getFloat32(p,true), dv.getFloat32(p+4,true), dv.getFloat32(p+8,true), dv.getFloat32(p+12,true)];
+    p += 16; str(); p += 4;
+    props.push({ name, desc, type, valOff, val });
+  }
+  return props;
+}
+
+function decompressAll(orig, b){
+  const parts = [], blockAt = []; let pos = b.dataStart, outPos = 0;
+  for (const blk of b.blocks){
+    const raw = orig.subarray(pos, pos + blk.c); const ct = blk.f & 0x3F;
+    const dec = (ct === 2 || ct === 3) ? lz4dec(raw, blk.u) : raw.slice();
+    parts.push(dec); blockAt.push({ start: outPos, end: outPos + blk.u, comp: blk.c, ct, srcOff: pos }); outPos += blk.u; pos += blk.c;
+  }
+  const data = new Uint8Array(outPos); let w = 0; for (const p of parts){ data.set(p, w); w += p.length; }
+  return { data, blockAt };
+}
+
+function lz4enc(src){
+  const out = []; let i = 0;
+  while (i < src.length){
+    const litLen = Math.min(15, src.length - i); out.push(litLen << 4);
+    if (litLen === 15){ let rem = src.length - i - 15; while (rem >= 255){ out.push(255); rem -= 255; } out.push(rem); }
+    for (let k = 0; k < litLen; k++) out.push(src[i + k]); i += litLen;
+  }
+  return new Uint8Array(out);
+}
+
+function rebuildShaders(orig, b, data, blockAt, sf, node, repl){
+  const touched = new Set();
+  for (const o of sf.objs){
+    const body = repl.get(o.pid); if (!body) continue;
+    const abs = node.off + sf.dataOffset + o.off; data.set(body, abs);
+    for (let i = 0; i < blockAt.length; i++){ const s = blockAt[i]; if (abs < s.end && abs + body.length > s.start) touched.add(i); }
+  }
+  if (!touched.size) throw new Error('Không có gì thay đổi.');
+  const parts = [], newBlocks = [];
+  for (let i = 0; i < b.blocks.length; i++){
+    const blk = b.blocks[i], at = blockAt[i];
+    if (!touched.has(i)){ parts.push(orig.subarray(at.srcOff, at.srcOff + blk.c)); newBlocks.push({ u: blk.u, c: blk.c, f: blk.f }); continue; }
+    const raw = data.subarray(at.start, at.end); let comp, flags = blk.f;
+    if ((blk.f & 0x3F) === 0) comp = raw;
+    else { comp = lz4enc(raw); if (comp.length >= raw.length){ comp = raw; flags = blk.f & ~0x3F; } }
+    parts.push(comp); newBlocks.push({ u: blk.u, c: comp.length, f: flags });
+  }
+  const info = b.info.slice(); const idv = new DataView(info.buffer, info.byteOffset, info.byteLength); let q = 20;
+  for (const nb of newBlocks){ idv.setUint32(q, nb.u, false); idv.setUint32(q + 4, nb.c, false); idv.setUint16(q + 8, nb.f, false); q += 10; }
+  const infoOut = ((b.flags & 0x3F) === 0) ? info : lz4enc(info);
+  const dataLen = parts.reduce((a, x) => a + x.length, 0);
+  const atEnd = !!(b.flags & 0x80); const headLen = atEnd ? b.dataStart : b.infoOff;
+  let core = headLen + dataLen + infoOut.length;
+  if (!atEnd && (b.flags & 0x200)) core = ((headLen + infoOut.length + 15) & ~15) + dataLen;
+  const out = new Uint8Array(Math.max(orig.length, core));
+  if (atEnd){
+    out.set(orig.subarray(0, headLen), 0); let p = headLen;
+    for (const x of parts){ out.set(x, p); p += x.length; }
+    out.set(infoOut, p);
+  } else {
+    out.set(orig.subarray(0, b.infoOff), 0); out.set(infoOut, b.infoOff);
+    let p = b.infoOff + infoOut.length; if (b.flags & 0x200) p = (p + 15) & ~15;
+    for (const x of parts){ out.set(x, p); p += x.length; }
+  }
+  const sp = (function(u8){ let p = 0; while (u8[p]) p++; p += 5; while (u8[p]) p++; p++; while (u8[p]) p++; p++; return p; })(out);
+  const odv = new DataView(out.buffer);
+  odv.setBigInt64(sp, BigInt(atEnd ? core : out.length), false);
+  odv.setUint32(sp + 8, infoOut.length, false); odv.setUint32(sp + 12, info.length, false);
+  return out;
+}
+
+window.__shaderState = {
+  file: null, buffer: null, bundle: null, sf: null, node: null,
+  data: null, blockAt: null, shaders: [],
+  presets: {
+    chams_sung:   { color: '#00FF00' },
+    dinhvi_sung:  { color: '#00FFFF' },
+    chams_nguoi:  { color: '#FF0000' },
+    dinhvi_nguoi: { color: '#FFFF00' }
+  }
+};
+window.__shaderFilter = 'all';
+
+const DINHVI_SUNG_KWS  = ['xray', 'outline', 'dinhvi', 'dinh_vi', 'scope', 'crosshair', 'esp', 'aimlock', 'silhouette'];
+const DINHVI_NGUOI_KWS = ['holo', 'hologram', 'scan', 'rim', 'playerxray', 'playeroutline'];
+const WEAPON_KWS = ['weapon', 'gun', 'brmobilebumpspec', 'backweapon', 'decal'];
+
+function smartClassifyShader(s) {
+  const pathLower = (s.path || '').toLowerCase();
+  const propNames = (s.props || []).map(p => p.name.toLowerCase()).join(' ');
+  for (const kw of DINHVI_SUNG_KWS) if (pathLower.includes(kw)) return 'dinhvi_sung';
+  if (propNames.includes('_xraycolor') || propNames.includes('_outlinecolor')) return 'dinhvi_sung';
+  for (const kw of DINHVI_NGUOI_KWS) {
+    if (pathLower.includes(kw)) {
+      for (const wkw of WEAPON_KWS) if (pathLower.includes(wkw)) return 'chams_sung';
+      return 'dinhvi_nguoi';
+    }
+  }
+  const isWeapon = WEAPON_KWS.some(kw => pathLower.includes(kw));
+  if (isWeapon) return 'chams_sung';
+  return 'chams_nguoi';
+}
+
+function scanShaders(buffer) {
+  const b = parseBundle(buffer);
+  const node = b.nodes[0];
+  if (!node) throw new Error('Bundle không có node nào.');
+  const { data, blockAt } = decompressAll(buffer, b);
+  const cab = data.subarray(node.off, node.off + node.size);
+  const sf = parseSF(cab);
+  const abObj = sf.objs.find(o => o.cid === 142);
+  const nameOf = new Map();
+  if (abObj){
+    try {
+      const v = readObj(sf, abObj, null);
+      if (v && v.m_Container) for (const c of v.m_Container) nameOf.set(c.second.asset.m_PathID, c.first);
+    } catch(e) {}
+  }
+  const shaders = [];
+  for (const o of sf.objs){
+    if (o.cid !== 48) continue;
+    const path = nameOf.get(o.pid) || '';
+    let props = [];
+    try {
+      const body = objBody(sf, o);
+      props = readShaderProps(body).filter(p => {
+        const n = p.name.toLowerCase();
+        return n.includes('color') || n.includes('tint') || n === '_xraycolor' || n === '_outlinecolor';
+      });
+    } catch(e) {}
+    const s = { pid: o.pid, path, name: path.split('/').pop() || '', props };
+    s.group = smartClassifyShader(s);
+    shaders.push(s);
+  }
+  return { b, sf, node, data, blockAt, shaders, nameOf };
+}
+
+window.switchShaderType = function(type){
+  if (window.SFX) SFX.toggle(true);
+  window.__shaderFilter = type;
+  document.querySelectorAll('.st-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-type') === type);
+  });
+  renderShaderUI();
+};
+
+function renderShaderUI() {
+  const st = window.__shaderState;
+  const emptyHero = document.getElementById('shaderEmptyHero');
+  const mainEl = document.getElementById('shaderMain');
+  const btnMake = document.getElementById('btnMakeShader');
+  const filter = window.__shaderFilter || 'all';
+
+  if (!st.shaders || st.shaders.length === 0){
+    emptyHero.style.display = 'block';
+    mainEl.style.display = 'none';
+    if (btnMake) btnMake.disabled = true;
+    return;
+  }
+  emptyHero.style.display = 'none';
+  mainEl.style.display = 'block';
+  if (btnMake) btnMake.disabled = false;
+
+  const counts = { chams_sung: 0, dinhvi_sung: 0, chams_nguoi: 0, dinhvi_nguoi: 0 };
+  st.shaders.forEach(s => counts[s.group]++);
+  document.getElementById('totalShaderCount').textContent = st.shaders.length;
+  document.getElementById('countChamsSung').textContent = counts.chams_sung;
+  document.getElementById('countDinhViSung').textContent = counts.dinhvi_sung;
+  document.getElementById('countChamsNguoi').textContent = counts.chams_nguoi;
+  document.getElementById('countDinhViNguoi').textContent = counts.dinhvi_nguoi;
+
+  const chipsEl = document.getElementById('shaderDetectedChips');
+  let chipsHtml = '';
+  if (counts.chams_sung > 0)   chipsHtml += `<span class="detected-chip">🔫 Chams Súng <span class="num">${counts.chams_sung}</span></span>`;
+  if (counts.dinhvi_sung > 0)  chipsHtml += `<span class="detected-chip">🎯 Định Vị Súng <span class="num">${counts.dinhvi_sung}</span></span>`;
+  if (counts.chams_nguoi > 0)  chipsHtml += `<span class="detected-chip">🧍 Chams NV <span class="num">${counts.chams_nguoi}</span></span>`;
+  if (counts.dinhvi_nguoi > 0) chipsHtml += `<span class="detected-chip">👤 Định Vị NV <span class="num">${counts.dinhvi_nguoi}</span></span>`;
+  chipsEl.innerHTML = chipsHtml;
+
+  document.getElementById('stBadgeAll').textContent = st.shaders.length;
+  document.getElementById('stBadgeChams').textContent = counts.chams_sung;
+  document.getElementById('stBadgeDinhVi').textContent = counts.dinhvi_sung;
+  document.getElementById('stBadgeChamsNguoi').textContent = counts.chams_nguoi;
+  document.getElementById('stBadgeDinhViNguoi').textContent = counts.dinhvi_nguoi;
+
+  let filtered = st.shaders;
+  let filterInfoText = '';
+  let filterDotCls = 'all';
+  const labelMap = {
+    chams_sung: 'Chams Súng', dinhvi_sung: 'Định Vị Súng',
+    chams_nguoi: 'Chams Nhân Vật', dinhvi_nguoi: 'Định Vị Nhân Vật'
+  };
+
+  if (filter !== 'all'){
+    filtered = st.shaders.filter(s => s.group === filter);
+    filterInfoText = `Chỉ hiển thị <b>${filtered.length}</b> shader ${labelMap[filter]}`;
+    filterDotCls = filter.includes('chams') ? 'chams' : 'dinhvi';
+  } else {
+    filterInfoText = `Đang hiển thị <b>tất cả ${st.shaders.length}</b> shader`;
+    filterDotCls = 'all';
+  }
+
+  const infoBar = document.getElementById('filterInfoBar');
+  if (infoBar){
+    const dot = infoBar.querySelector('.fi-dot');
+    if (dot) dot.className = 'fi-dot ' + filterDotCls;
+    const txt = document.getElementById('filterInfoText');
+    if (txt) txt.innerHTML = filterInfoText;
+  }
+
+  const body = document.getElementById('shaderTableBody');
+  if (filtered.length === 0){
+    body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#5a6b7d;font-size:11px;">Không có shader nào thuộc nhóm này</td></tr>';
+    return;
+  }
+
+  let html = '';
+  filtered.forEach((s, idx) => {
+    const pillInfo = {
+      chams_sung:   { cls: 'chams',   txt: '🔫 Chams' },
+      dinhvi_sung:  { cls: 'dinhvi',  txt: '🎯 ĐV Súng' },
+      chams_nguoi:  { cls: 'chams',   txt: '🧍 Chams NV' },
+      dinhvi_nguoi: { cls: 'dinhvi',  txt: '👤 ĐV NV' }
+    }[s.group] || { cls: 'chams', txt: '?' };
+
+    const displayName = s.name || s.path || '(không tên)';
+    const pathLower = (s.path || '').toLowerCase();
+    const isWeapon = WEAPON_KWS.some(kw => pathLower.includes(kw));
+    const typeTxt = isWeapon ? 'SÚNG' : 'NV';
+    const typeCls = isWeapon ? 'type-weapon' : 'type-player';
+
+    html += `<tr>
+      <td style="text-align:center;"><input type="checkbox" class="shader-enable" data-pid="${s.pid}" checked onchange="onShaderRowToggle(this)"></td>
+      <td class="row-num">${idx + 1}</td>
+      <td class="path-cell">${esc(displayName)}</td>
+      <td style="text-align:center;"><span class="type-badge ${typeCls}">${typeTxt}</span></td>
+      <td><span class="group-pill ${pillInfo.cls}">${pillInfo.txt}</span></td>
+    </tr>`;
+  });
+  body.innerHTML = html;
+}
+
+window.onShaderRowToggle = function(cb){
+  cb.closest('tr').style.opacity = cb.checked ? '1' : '0.4';
+  if (window.SFX) SFX.toggle(!!cb.checked);
+};
+
+window.onShaderPresetChange = function(group, val, fromText){
+  const st = window.__shaderState;
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(val).trim());
+  if (!m) return;
+  const hex = '#' + m[1].toUpperCase();
+  st.presets[group].color = hex;
+  const idMap = {
+    chams_sung: 'ChamsSung', dinhvi_sung: 'DinhViSung',
+    chams_nguoi: 'ChamsNguoi', dinhvi_nguoi: 'DinhViNguoi'
+  };
+  const k = idMap[group];
+  const cEl = document.getElementById('color' + k);
+  const tEl = document.getElementById('text' + k);
+  if (fromText && cEl) cEl.value = hex.toLowerCase();
+  if (!fromText && tEl) tEl.value = hex.toUpperCase();
+  if (window.SFX) SFX.select();
+  showShaderMsg('Đã đặt màu ' + group + ' = ' + hex, false);
+};
+
+window.rescanShader = function(){
+  if (window.SFX) SFX.click();
+  const st = window.__shaderState;
+  if (!st.buffer) { showShaderMsg('Chưa có file để quét.', true); return; }
+  try {
+    const result = scanShaders(st.buffer);
+    st.bundle = result.b; st.sf = result.sf; st.node = result.node;
+    st.data = result.data; st.blockAt = result.blockAt;
+    st.shaders = result.shaders;
+    renderShaderUI();
+    showShaderMsg('Đã quét lại: ' + result.shaders.length + ' shader.', false);
+  } catch(e) { showShaderMsg('Lỗi quét: ' + e.message, true); if (window.SFX) SFX.error(); }
+};
+
+window.loadShaderFile = async function(file){
+  const st = window.__shaderState;
+  st.file = file;
+  try {
+    const buf = new Uint8Array(await file.arrayBuffer());
+    st.buffer = buf;
+    const result = scanShaders(buf);
+    st.bundle = result.b; st.sf = result.sf; st.node = result.node;
+    st.data = result.data; st.blockAt = result.blockAt;
+    st.shaders = result.shaders;
+    window.__shaderFilter = 'all';
+    document.querySelectorAll('.st-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-type') === 'all');
+    });
+    renderShaderUI();
+    if (result.shaders.length === 0) {
+      document.getElementById('shaderEmptyHero').innerHTML = '<span class="ico">⚠️</span><div class="txt">File không có shader nào</div><div class="sub">Hãy chọn file Bundle khác</div>';
+      showShaderMsg('File không có shader nào.', true);
+      if (window.SFX) SFX.error();
+    } else {
+      showShaderMsg('Đã phát hiện ' + result.shaders.length + ' shader. Chỉnh màu rồi MAKE FILE.', false);
+      if (window.SFX) SFX.success();
+    }
+  } catch(e) {
+    st.buffer = null; st.shaders = [];
+    renderShaderUI();
+    showShaderMsg('Lỗi đọc file: ' + e.message, true);
+    if (window.SFX) SFX.error();
+  }
+};
+
+function showShaderMsg(msg, isErr){
+  const box = document.getElementById('msgShader');
+  if (!box) return;
+  box.className = 'msg ' + (isErr ? 'bad' : 'ok');
+  box.textContent = msg;
+}
+
+window.processShaderMake = async function(){
+  if (window.SFX) SFX.click();
+  const st = window.__shaderState;
+  if (!st.buffer || !st.bundle) { showShaderMsg('Chưa có file.', true); if (window.SFX) SFX.error(); return; }
+
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) overlay.classList.add('on');
+  const start = performance.now();
+  const animPromise = new Promise(function(resolve){
+    function update(now){
+      const p = Math.min((now - start) / 1500, 1);
+      const pct = Math.floor(p * 100);
+      document.getElementById('processingBarFill').style.width = pct + '%';
+      document.getElementById('processingPercent').textContent = pct;
+      document.getElementById('processingStatusPct').textContent = pct;
+      if(p < 1) requestAnimationFrame(update); else resolve();
+    }
+    requestAnimationFrame(update);
+  });
+
+  try {
+    const intensity = parseFloat(document.getElementById('shaderIntensity').value) || 1.0;
+    const presetRgb = {};
+    for (const g of Object.keys(st.presets)){
+      const rgb = hex2rgb(st.presets[g].color);
+      if (rgb) presetRgb[g] = [rgb[0], rgb[1], rgb[2], intensity];
+    }
+    const enabledPids = new Set();
+    document.querySelectorAll('.shader-enable').forEach(cb => {
+      if (cb.checked) enabledPids.add(parseInt(cb.getAttribute('data-pid')));
+    });
+    const currentFilter = window.__shaderFilter || 'all';
+    const shadersToApply = st.shaders.filter(s => {
+      if (!enabledPids.has(parseInt(s.pid))) return false;
+      if (currentFilter === 'all') return true;
+      return s.group === currentFilter;
+    });
+    const repl = new Map();
+    const data = st.data;
+    const cab = data.subarray(st.node.off, st.node.off + st.node.size);
+    const sf = st.sf;
+    let changedCount = 0, changedShader = 0;
+    for (const s of shadersToApply){
+      const newColor = presetRgb[s.group];
+      if (!newColor || s.props.length === 0) continue;
+      const obj = sf.objs.find(o => o.pid === s.pid);
+      if (!obj) continue;
+      const cur = cab.subarray(sf.dataOffset + obj.off, sf.dataOffset + obj.off + obj.size);
+      const body = cur.slice();
+      const dv = new DataView(body.buffer, body.byteOffset, body.byteLength);
+      try {
+        const props = readShaderProps(body);
+        for (const p of props){
+          const n = p.name.toLowerCase();
+          const isColorProp = n.includes('color') || n.includes('tint') ||
+                              n === '_xraycolor' || n === '_outlinecolor';
+          if (!isColorProp) continue;
+          dv.setFloat32(p.valOff,     newColor[0], true);
+          dv.setFloat32(p.valOff + 4, newColor[1], true);
+          dv.setFloat32(p.valOff + 8, newColor[2], true);
+          dv.setFloat32(p.valOff + 12, newColor[3], true);
+          changedCount++;
+        }
+      } catch(e) { continue; }
+      repl.set(s.pid, body);
+      changedShader++;
+    }
+    if (repl.size === 0) throw new Error('Chưa có shader nào được bật để sửa.');
+    const outBuffer = rebuildShaders(st.buffer, st.bundle, data, st.blockAt, sf, st.node, repl);
+    const url = URL.createObjectURL(new Blob([outBuffer], { type: 'application/octet-stream' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = st.file.name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ a.remove(); URL.revokeObjectURL(url); }, 4000);
+    await animPromise;
+    if (overlay) overlay.classList.remove('on');
+    showShaderMsg('✅ MAKE FILE thành công! Sửa ' + changedShader + ' shader / ' + changedCount + ' property.', false);
+    if (window.SFX) SFX.make();
+  } catch(err) {
+    await animPromise;
+    if (overlay) overlay.classList.remove('on');
+    showShaderMsg('❌ ' + err.message, true);
+    if (window.SFX) SFX.error();
+  }
+};
+
+function fmtSize(b){
+  if(!b && b !== 0) return "—";
+  if(b === 0) return "0 B";
+  var k = 1024, s = ["B","KB","MB","GB"], i = Math.floor(Math.log(b)/Math.log(k));
+  return (b/Math.pow(k,i)).toFixed(2) + " " + s[i];
+}
+
+window.triggerFilePick = function(inputId){
+  if (window.SFX) SFX.click();
+  var input = document.getElementById(inputId); if(input) input.click();
+};
+
+window.switchTab = function(tabId){
+  if (window.SFX) SFX.tab();
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => { el.classList.remove('active'); el.classList.add('inactive'); });
+  var pane = document.getElementById('tab-' + tabId); if(pane) pane.classList.add('active');
+  var map = { 'aim-thuong':'Thuong', 'vip':'Vip', 'aimvip':'AimVip', 'cachevip':'CacheVip', 'shader':'Shader' };
+  var btn = document.getElementById('btnTab' + (map[tabId] || ''));
+  if(btn){ btn.classList.remove('inactive'); btn.classList.add('active'); }
+};
+
+window.updateFileName = async function(type){
+  var prefix = type === 'thuong' ? 'Thuong' : type === 'vip' ? 'Vip' : type === 'aimvip' ? 'AimVip' : type === 'shader' ? 'Shader' : 'CacheVip';
+  var inputId = type === 'thuong' ? 'fileThuong' : type === 'vip' ? 'fileVip' : type === 'aimvip' ? 'fileAimVip' : type === 'shader' ? 'fileShader' : 'fileCacheVip';
+  var input = document.getElementById(inputId);
+  var btn = document.getElementById('btnFile' + prefix);
+  var submit = document.getElementById('submit' + prefix);
+  var infoBox = document.getElementById('fileInfo' + prefix);
+
+  if(!input || !input.files || input.files.length === 0){
+    if(btn){ btn.innerHTML = "📁 Chọn file Bundle"; btn.style.color = ""; }
+    if(submit) submit.disabled = true;
+    if(infoBox) infoBox.classList.remove('show');
+    return;
+  }
+  var file = input.files[0];
+  if(btn){ btn.innerHTML = "✅ <b>" + file.name + "</b>"; btn.style.color = "#00ffe5"; }
+  if(infoBox){
+    infoBox.classList.add('show');
+    document.getElementById('fiName' + prefix).textContent = file.name;
+    document.getElementById('fiSize' + prefix).textContent = fmtSize(file.size);
+  }
+  if(submit) submit.disabled = false;
+  if(window.SFX) SFX.pick();
+  if(type === 'shader') await loadShaderFile(file);
+};
+
+window.selectFunc = function(type, el){
+  var listId = type === 'thuong' ? 'funcListThuong' : type === 'vip' ? 'funcListVip' : type === 'aimvip' ? 'funcListAimVip' : 'funcListCacheVip';
+  var list = document.getElementById(listId); if(!list) return;
+  list.querySelectorAll('.pkg-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  if(window.SFX) SFX.select();
+};
+
+window.processFile = async function(type){
+  if (type === 'shader'){ processShaderMake(); return; }
+
+  var prefix = type === 'thuong' ? 'Thuong' : type === 'vip' ? 'Vip' : type === 'aimvip' ? 'AimVip' : 'CacheVip';
+  var fileInput = document.getElementById('file' + prefix);
+  var file = (fileInput && fileInput.files && fileInput.files.length > 0) ? fileInput.files[0] : null;
+  var msgBox = document.getElementById('msg' + prefix);
+  var submit = document.getElementById('submit' + prefix);
+
+  if(!file){ if(msgBox){ msgBox.className = 'msg bad'; msgBox.textContent = 'Vui lòng chọn file.'; } if(window.SFX) SFX.error(); return; }
+  if(submit){ submit.disabled = true; submit.textContent = 'Đang xử lý...'; }
+  if(msgBox){ msgBox.className = 'msg ok'; msgBox.textContent = 'Đang tiến hành patch...'; }
+
+  var overlay = document.getElementById('loadingOverlay');
+  if(overlay) overlay.classList.add('on');
+  var start = performance.now();
+  var animPromise = new Promise(function(resolve){
+    function update(now){
+      var p = Math.min((now - start) / 1500, 1);
+      var pct = Math.floor(p * 100);
+      document.getElementById('processingBarFill').style.width = pct + '%';
+      document.getElementById('processingPercent').textContent = pct;
+      document.getElementById('processingStatusPct').textContent = pct;
+      if(p < 1) requestAnimationFrame(update); else resolve();
+    }
+    requestAnimationFrame(update);
+  });
+
+  try {
+    var buffer = new Uint8Array(await file.arrayBuffer());
+    var listId = type === 'thuong' ? 'funcListThuong' : type === 'vip' ? 'funcListVip' : 'funcListAimVip';
+    var selectedCard = document.querySelector('#' + listId + ' .pkg-card.selected');
+    var func = selectedCard ? selectedCard.getAttribute('data-val') : 'chestv2';
+
+    var dataSet = getDataSet(type, func);
+    if(!dataSet || dataSet.length === 0) throw new Error('Chức năng này chưa có dữ liệu Hex.');
+
+    var successCount = 0;
+    for(var i = 0; i < dataSet.length; i++){
+      var entry = dataSet[i];
+      var bytes = new Uint8Array(entry.hex.split(/\s+/).map(function(h){ return parseInt(h, 16); }));
+      if(entry.off + bytes.length <= buffer.length){ buffer.set(bytes, entry.off); successCount++; }
+    }
+    if(successCount === 0) throw new Error('Không có offset nào được ghi (file không khớp).');
+    var outBuffer = buffer;
+    if(msgBox) msgBox.textContent = '✨ Đã ghi ' + successCount + ' offsets thành công!';
+
+    var url = URL.createObjectURL(new Blob([outBuffer], { type: "application/octet-stream" }));
+    var a = document.createElement("a");
+    a.href = url; a.download = file.name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ a.remove(); URL.revokeObjectURL(url); }, 4000);
+
+    await animPromise;
+    if(overlay) overlay.classList.remove('on');
+    if(msgBox) msgBox.className = 'msg ok';
+    if(window.SFX) SFX.make();
+  } catch(err) {
+    await animPromise;
+    if(overlay) overlay.classList.remove('on');
+    if(msgBox){ msgBox.className = 'msg bad'; msgBox.textContent = '❌ ' + err.message; }
+    if(window.SFX) SFX.error();
+  }
+  if(submit){ submit.textContent = 'Xử Lý & Tải File'; submit.disabled = false; }
+};
+
+window.addEventListener('DOMContentLoaded', function() {
+  // Mọi thứ đã được xử lý ở phần Hệ thống bản quyền
+});
+
+}catch(e){ console.error(e); }
+})();
+</script>
+</body>
+</html>
